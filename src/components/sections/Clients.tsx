@@ -6,7 +6,7 @@ export function Clients() {
   return (
     <section id="clients" className="py-[var(--section-y)]" aria-labelledby="clients-h">
       <h2 id="clients-h" className="px-[var(--gutter)] text-[clamp(2.4rem,9vw,8rem)] font-light uppercase leading-[0.9] tracking-[-0.045em]">
-        Featured clients
+        Featured clients<span className="text-cobalt">.</span>
       </h2>
       <ul
         className="mt-14 flex scroll-px-[var(--gutter)] snap-x snap-mandatory gap-8 overflow-x-auto px-[var(--gutter)] pb-4 [scrollbar-width:none] lg:grid lg:grid-cols-5 lg:overflow-visible [&::-webkit-scrollbar]:hidden"
@@ -15,7 +15,7 @@ export function Clients() {
       >
         {clients.map((c) => (
           <li key={c.name} className="flex w-[78vw] shrink-0 snap-start flex-col sm:w-[42vw] lg:w-auto">
-            <p className="text-3xl font-bold tracking-tighter">{c.name}</p>
+            <p className="text-3xl font-bold tracking-tighter text-cobalt">{c.name}</p>
             <p className="mt-8 flex-1 text-lg leading-snug text-ink/85">{c.text}</p>
             <div className="mt-10">
               <Pill href="#">{c.cta}</Pill>

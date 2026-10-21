@@ -44,22 +44,42 @@ export const nav = [
   { label: "Contacto", href: "#contacto" },
 ];
 
-// TODO: sustituir por proyectos reales. Escena de stock + pantalla del proyecto dentro de un dispositivo.
-export const projects = [
-  { id: "p01", title: "Proyecto Uno", meta: ["Formación IA", "Research", "Acompañamiento"], tone: "cobalt" },
-  { id: "p02", title: "Proyecto Dos", meta: ["Producto digital", "Diseño con IA", "Herramientas"], tone: "ink" },
-  { id: "p03", title: "Proyecto Tres", meta: ["Research", "Benchmark", "Estrategia"], tone: "sky" },
-  { id: "p04", title: "Proyecto Cuatro", meta: ["Flujos con IA", "Formación IA", "Acompañamiento"], tone: "paper" },
-].map((p, i) => ({
+// TODO: sustituir por proyectos reales (imágenes de stock + lorem ipsum).
+// x,y,w = posición y ancho en % del lienzo; rot = grados; depth = intensidad del parallax; ar = proporción w/h.
+const cloud: { title: string; category: string; x: number; y: number; w: number; rot: number; depth: number; ar: number }[] = [
+  { title: "Proyecto Uno", category: "Formación IA", x: 44, y: 6, w: 7, rot: -2, depth: 0.6, ar: 0.8 },
+  { title: "Proyecto Dos", category: "Producto digital", x: 36, y: 17, w: 9, rot: 2, depth: 1, ar: 0.9 },
+  { title: "Proyecto Tres", category: "Research", x: 47, y: 24, w: 6, rot: 4, depth: 1.4, ar: 0.8 },
+  { title: "Proyecto Cuatro", category: "Benchmark", x: 28, y: 33, w: 6.5, rot: -3, depth: 0.5, ar: 0.75 },
+  { title: "Proyecto Cinco", category: "Flujos con IA", x: 22, y: 45, w: 8, rot: 3, depth: 1.2, ar: 0.85 },
+  { title: "Proyecto Seis", category: "Herramientas", x: 36, y: 50, w: 5, rot: -2, depth: 0.8, ar: 0.55 },
+  { title: "Proyecto Siete", category: "Acompañamiento", x: 40, y: 58, w: 9.5, rot: 2, depth: 1.6, ar: 0.8 },
+  { title: "Proyecto Ocho", category: "Formación IA", x: 24, y: 64, w: 7, rot: -4, depth: 0.7, ar: 0.9 },
+  { title: "Proyecto Nueve", category: "Estrategia", x: 38, y: 80, w: 8, rot: 1, depth: 0.4, ar: 0.75 },
+  { title: "Proyecto Diez", category: "Research", x: 60, y: 8, w: 7.5, rot: 2, depth: 0.9, ar: 0.75 },
+  { title: "Proyecto Once", category: "Producto digital", x: 66, y: 24, w: 6.5, rot: -3, depth: 1.5, ar: 0.7 },
+  { title: "Proyecto Doce", category: "Diseño con IA", x: 55, y: 30, w: 8, rot: 1, depth: 1, ar: 0.95 },
+  { title: "Proyecto Trece", category: "Formación IA", x: 52, y: 40, w: 5, rot: -2, depth: 0.6, ar: 0.55 },
+  { title: "Proyecto Catorce", category: "Benchmark", x: 70, y: 43, w: 7, rot: 3, depth: 1.1, ar: 0.7 },
+  { title: "Proyecto Quince", category: "Flujos con IA", x: 62, y: 54, w: 6, rot: -1, depth: 0.5, ar: 0.8 },
+  { title: "Proyecto Dieciséis", category: "Herramientas", x: 66, y: 65, w: 7.5, rot: 2, depth: 1.3, ar: 0.95 },
+  { title: "Proyecto Diecisiete", category: "Acompañamiento", x: 50, y: 74, w: 6, rot: -3, depth: 0.8, ar: 0.7 },
+  { title: "Proyecto Dieciocho", category: "Estrategia", x: 56, y: 84, w: 8, rot: 2, depth: 0.6, ar: 0.8 },
+];
+
+export const projects = cloud.map((p, i) => ({
   ...p,
-  scene: `https://picsum.photos/seed/2894-scene-${i + 1}/1400/1000`,
+  id: `p${String(i + 1).padStart(2, "0")}`,
+  description: LOREM,
+  meta: [p.category, "Research", "Estrategia"],
+  image: `https://picsum.photos/seed/2894-cloud-${i + 1}/600/${Math.round(600 / p.ar)}`,
+  imageLarge: `https://picsum.photos/seed/2894-cloud-${i + 1}/1400/1000`,
 }));
 
 export const reel = {
   label: "Play reel",
-  // TODO: URL pública (Vimeo/YouTube/Drive) del showreel
-  url: process.env.NEXT_PUBLIC_SHOWREEL_URL ?? "",
-  poster: "https://picsum.photos/seed/2894-reel/1920/1080",
+  youtubeId: "EdIrzwME-do",
+  poster: "https://i.ytimg.com/vi/EdIrzwME-do/maxresdefault.jpg",
 };
 
 export const services = [

@@ -5,7 +5,7 @@ export function About() {
   return (
     <section id="nosotros" className="px-[var(--gutter)] pb-[var(--section-y)]" aria-labelledby="nosotros-h">
       <h2 id="nosotros-h" className="text-[clamp(2.4rem,9vw,8rem)] font-light uppercase leading-[0.9] tracking-[-0.045em]">
-        Nosotros
+        Nosotros<span className="text-cobalt">.</span>
       </h2>
       <div className="mt-10 grid gap-10 md:grid-cols-2">
         <p className="max-w-sm text-lg font-medium uppercase leading-tight sm:text-xl">

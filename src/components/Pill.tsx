@@ -8,7 +8,7 @@ const variants = {
   light: "bg-cloud text-ink hover:bg-sky",
 };
 
-export function Pill({ variant = "dark", className = "", ...props }: Props) {
+export function Pill({ variant = "cobalt", className = "", ...props }: Props) {
   return (
     <a
       {...props}

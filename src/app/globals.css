@@ -170,5 +170,10 @@ body { font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  50% { transform: translate3d(var(--dx, 6px), var(--dy, -10px), 0) rotate(calc(var(--rot, 0deg) + 1.2deg)); }
 }
