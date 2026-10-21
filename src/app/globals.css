@@ -136,11 +136,11 @@
   --soft-gray: #e6e8ec;
   --ink-black: #0b0b0d;
 
-  --background: var(--cloud-white);
+  --background: #efefef;
   --foreground: var(--ink-black);
   --primary: var(--deep-cobalt);
   --primary-foreground: var(--cloud-white);
-  --secondary: var(--soft-gray);
+  --secondary: #e2e2e2;
   --secondary-foreground: var(--ink-black);
   --muted: var(--soft-gray);
   --muted-foreground: #5b5f6a;
@@ -156,10 +156,11 @@
 
 @theme inline {
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --color-cloud: var(--cloud-white);
+  --color-cloud: #efefef;
+  --color-paper: var(--cloud-white);
   --color-sky: var(--sky-blue);
   --color-cobalt: var(--deep-cobalt);
-  --color-gray-soft: var(--soft-gray);
+  --color-gray-soft: #d6d6d6;
   --color-ink: var(--ink-black);
 }
 

@@ -3,9 +3,9 @@ import { nav, studio } from "@/content/site";
 
 export function Footer() {
   return (
-    <footer id="contacto" className="bg-cobalt px-[var(--gutter)] pt-[var(--section-y)] text-cloud">
-      <p className="text-sm font-medium uppercase tracking-wide text-sky">Contacto</p>
-      <h2 className="mt-4 max-w-4xl text-[clamp(2rem,6vw,5.5rem)] font-bold leading-[0.95] tracking-tighter">
+    <footer id="contacto" className="bg-ink px-[var(--gutter)] pt-[var(--section-y)] text-cloud">
+      <p className="text-sm font-medium uppercase tracking-wide text-cloud/60">Contacto</p>
+      <h2 className="mt-4 max-w-4xl text-[clamp(2rem,6vw,5.5rem)] font-light uppercase leading-[0.95] tracking-[-0.04em]">
         Hablemos de lo que tu equipo puede crear con IA.
       </h2>
       <div className="mt-8 flex flex-wrap gap-3">
@@ -33,7 +33,7 @@ export function Footer() {
       </div>
 
       <div aria-hidden className="select-none overflow-hidden pt-10 text-[clamp(4.5rem,25vw,24rem)] font-bold leading-[0.9] tracking-tighter">
-        2894<span className="text-sky">_</span>
+        2894<span className="text-cobalt">_</span>
       </div>
     </footer>
   );

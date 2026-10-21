@@ -1,33 +1,30 @@
-import { services } from "@/content/site";
+import { Pill } from "@/components/Pill";
+import { services, studio } from "@/content/site";
 
 export function Services() {
   return (
-    <section id="servicios" className="bg-ink py-[var(--section-y)] text-cloud" aria-labelledby="servicios-h">
-      <div className="px-[var(--gutter)]">
-        <p className="text-sm font-medium uppercase tracking-wide text-sky">Approach</p>
-        <h2 id="servicios-h" className="mt-4 text-[clamp(2.5rem,9vw,8rem)] font-bold leading-[0.9] tracking-tighter">
-          Discover. Apply. Grow<span className="text-cobalt">.</span>
-        </h2>
+    <section id="servicios" className="px-[var(--gutter)] py-[var(--section-y)]" aria-labelledby="servicios-h">
+      <h2 id="servicios-h" className="text-[clamp(2.4rem,9vw,8rem)] font-light uppercase leading-[0.9] tracking-[-0.045em]">
+        Discover. Apply. Grow<span className="text-cobalt">.</span>
+      </h2>
+      <div className="mt-10 grid gap-8 md:grid-cols-2">
+        <p className="max-w-md text-sm font-medium uppercase leading-snug sm:text-base">{studio.servicesSummary}</p>
+        <div>
+          <Pill href="#contacto">Get in touch</Pill>
+        </div>
       </div>
 
-      <ol className="mt-14 border-t border-cloud/15">
+      <ol className="mt-16 grid gap-10 md:grid-cols-3 md:gap-8">
         {services.map((s, i) => (
-          <li
-            key={s.key}
-            className="grid gap-6 border-b border-cloud/15 px-[var(--gutter)] py-10 md:grid-cols-12 md:gap-8 md:py-14"
-          >
-            <span className="text-sm text-cloud/50 md:col-span-1">{String(i + 1).padStart(2, "0")}</span>
-            <h3 className="text-[clamp(2rem,5vw,4.5rem)] font-bold leading-none tracking-tight md:col-span-5">{s.key}</h3>
-            <div className="md:col-span-6">
-              <p className="max-w-md text-cloud/70">{s.text}</p>
-              <ul className="mt-6 flex flex-wrap gap-2">
-                {s.items.map((it) => (
-                  <li key={it} className="rounded-full border border-cloud/25 px-4 py-2 text-sm">
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <li key={s.key} className="border-t border-ink pt-5">
+            <p className="text-xs uppercase text-ink/60">{String(i + 1).padStart(2, "0")}</p>
+            <h3 className="mt-6 text-3xl uppercase tracking-tight sm:text-4xl">{s.key}</h3>
+            <p className="mt-4 max-w-xs text-ink/80">{s.text}</p>
+            <ul className="mt-6 space-y-1 text-sm uppercase tracking-wide">
+              {s.items.map((it) => (
+                <li key={it}>— {it}</li>
+              ))}
+            </ul>
           </li>
         ))}
       </ol>

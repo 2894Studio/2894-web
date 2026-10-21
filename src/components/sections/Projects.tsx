@@ -1,49 +1,36 @@
-import Image from "next/image";
+import { ImageFrame } from "@/components/ImageFrame";
+import { Pill } from "@/components/Pill";
 import { projects } from "@/content/site";
 
-// Galería interactiva: carrusel horizontal con snap (arrastre/gesto en táctil, hover reveal en desktop).
+// Featured work: grid de 2 columnas con filete vertical (1 columna en móvil).
 export function Projects() {
   return (
-    <section id="proyectos" className="py-[var(--section-y)]" aria-labelledby="proyectos-h">
-      <div className="flex items-end justify-between px-[var(--gutter)]">
-        <h2 id="proyectos-h" className="text-[clamp(2.5rem,9vw,8rem)] font-bold leading-[0.9] tracking-tighter">
-          Proyectos
-        </h2>
-        <p className="hidden pb-2 text-sm text-muted-foreground sm:block">
-          {String(projects.length).padStart(2, "0")} — arrastra →
-        </p>
-      </div>
-
-      <ul
-        className="mt-10 flex scroll-px-[var(--gutter)] snap-x snap-mandatory gap-4 overflow-x-auto px-[var(--gutter)] pb-6 [scrollbar-width:none] sm:gap-6 [&::-webkit-scrollbar]:hidden"
-        tabIndex={0}
-        aria-label="Galería de proyectos"
-      >
+    <section id="proyectos" className="px-[var(--gutter)] pb-[var(--section-y)]" aria-labelledby="proyectos-h">
+      <h2 id="proyectos-h" className="sr-only">
+        Proyectos destacados
+      </h2>
+      <ul className="grid gap-x-0 gap-y-14 md:grid-cols-2 md:[&>li:nth-child(odd)]:border-r md:[&>li:nth-child(odd)]:border-ink md:[&>li:nth-child(odd)]:pr-3.5 md:[&>li:nth-child(even)]:pl-3.5">
         {projects.map((p, i) => (
-          <li key={p.id} className="group w-[78vw] shrink-0 snap-start sm:w-[44vw] lg:w-[28vw]">
-            <a href="#" className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt">
-              <div className={`relative overflow-hidden rounded-3xl bg-gray-soft ${i % 2 ? "aspect-[4/5] lg:mt-16" : "aspect-[4/5]"}`}>
-                <Image
-                  src={p.image}
-                  alt={`${p.title} — imagen de ejemplo`}
-                  fill
-                  sizes="(min-width:1024px) 28vw, (min-width:640px) 44vw, 78vw"
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="absolute inset-0 flex items-end bg-gradient-to-t from-ink/80 to-transparent p-5 text-cloud opacity-100 transition-opacity duration-500 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-visible:opacity-100">
-                  <p className="text-sm">{p.description}</p>
-                </div>
-              </div>
-              <div className="mt-4 flex items-baseline justify-between gap-4">
-                <h3 className="text-lg font-medium">{p.title}</h3>
-                <span className="text-sm text-muted-foreground">
-                  {p.category} · {p.year}
-                </span>
-              </div>
+          <li key={p.id}>
+            <a href="#" className="group block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt">
+              <ImageFrame
+                scene={p.scene}
+                alt={`${p.title} — escena de ejemplo con la pantalla del proyecto`}
+                title={p.title}
+                tone={p.tone as "cobalt" | "ink" | "sky" | "paper"}
+                priority={i < 2}
+              />
+              <p className="mt-4 text-[11px] uppercase tracking-wide text-ink/70 sm:text-xs">{p.meta.join(" · ")}</p>
+              <h3 className="mt-3 text-xl uppercase tracking-tight transition-colors group-hover:text-cobalt sm:text-2xl">
+                {p.title}
+              </h3>
             </a>
           </li>
         ))}
       </ul>
+      <div className="mt-14">
+        <Pill href="#">Ver todos los proyectos</Pill>
+      </div>
     </section>
   );
 }
