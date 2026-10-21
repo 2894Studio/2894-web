@@ -3,15 +3,11 @@
 
 import { stock } from "./stock";
 
-export const LOREM =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
-
 export const studio = {
   name: "2894_",
   tagline: "Intelligent tools. Human imagination.",
-  // Titular en dos tiempos, como la referencia. TODO: validar con el cliente
-  headline: "Estudio de IA y diseño"
-  ,subline: "Impulsado por research y estrategia.",
+  // TODO: validar con el cliente
+  headline: "Estudio de IA y diseño",
   twoBeat: ["Pensado para crear.", "Hecho para conectar."],
   // Fuente: LinkedIn de 2894_
   positioning:
@@ -26,15 +22,17 @@ export const studio = {
   values: [
     {
       title: "Transparencia",
+      image: "/stock/remington-no-1-typewriter-made-by-remington.jpg",
+      alt: "Máquina de escribir Remington No. 1",
       text: "Creemos en una relación honesta con la tecnología. Hablamos claro sobre lo que la IA puede —y no puede— hacer, con estrategias realistas, éticas y sostenibles.",
     },
     {
       title: "Simplificamos la complejidad",
+      image: "/stock/compas-de-precision-marca-calpini-01.jpg",
+      alt: "Compás de precisión",
       text: "Entendemos todo el ecosistema de herramientas de IA y lo hacemos simple, con una mirada experta, cercana y personalizada. Convertimos la complejidad tecnológica en claridad creativa.",
     },
   ],
-  servicesSummary:
-    "Combinamos research, formación y herramientas con IA para que tu equipo descubra dónde aplicar la IA, la aplique con criterio y crezca con ella.",
   facts: { location: "Madrid", founded: "2025", team: "2–10 personas", sector: "Consultoría y servicios a empresas" },
   phone: "+34 622 016 300",
   email: "hola@2894.studio", // TODO: confirmar email real
@@ -74,13 +72,14 @@ export const projects = cloud.map((p, i) => ({
   ...p,
   ar: Math.min(0.95, Math.max(0.6, stock[i].w / stock[i].h)),
   id: `p${String(i + 1).padStart(2, "0")}`,
-  description: LOREM,
   meta: [p.category, "Research", "Estrategia"],
   image: stock[i].src,
   imageLarge: stock[i].src,
   imageAlt: stock[i].title,
   credit: stock[i].credit,
 }));
+
+export const aboutImage = { src: "/stock/coronelli-globe-terrestre.jpg", alt: "Globo terráqueo de Coronelli" };
 
 export const reel = {
   label: "Play reel",
@@ -89,34 +88,19 @@ export const reel = {
 };
 
 export const services = [
-  {
-    key: "Discover",
-    items: ["Research", "Formaciones", "Benchmark", "Identificación de problemas"],
-    text: "Entendemos cómo trabaja tu equipo hoy y dónde la IA puede aportar de verdad.",
-  },
-  {
-    key: "Apply",
-    items: ["Flujos de trabajo con IA", "Herramientas con IA", "Acompañamiento"],
-    text: "Diseñamos flujos y herramientas a medida y te acompañamos mientras los adoptas.",
-  },
-  {
-    key: "Grow",
-    items: ["Lorem ipsum dolor", "Sit amet consectetur", "Adipiscing elit"], // TODO: definir contenido de Grow
-    text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-  },
+  { key: "Discover", image: "/stock/printing-press-1850.jpg", alt: "Prensa de imprenta de 1850", items: ["Research", "Formaciones", "Benchmark", "Identificación de problemas"] },
+  { key: "Apply", image: "/stock/circuit-board-closeup-6901771187.jpg", alt: "Placa de circuito en primer plano", items: ["Flujos de trabajo con IA", "Herramientas con IA", "Acompañamiento"] },
+  // TODO: el cliente debe definir los entregables de Grow; mientras, resumen tomado de LinkedIn
+  { key: "Grow", image: "/stock/mercury-venus-and-the-moon-align.jpg", alt: "Mercurio, Venus y la Luna alineados sobre un observatorio", items: ["Crecimiento y madurez del equipo", "Visión estratégica", "Nuevas formas de creación"] },
 ];
 
 // Estructura narrativa de la referencia: encargo → enfoque → resultado cualitativo.
 // TODO: sustituir los wordmarks por logos SVG y los textos por los casos reales
+// TODO: sustituir los wordmarks por logos SVG; casos reales cuando existan
 export const clients = [
   { name: "ING", cta: "View case study" },
   { name: "MOA", cta: "View case study" },
   { name: "NATEEVO", cta: "View work" },
   { name: "INDITEX", cta: "View work" },
   { name: "DPROMA", cta: "View case study" },
-].map((c) => ({
-  ...c,
-  text: `${c.name} se puso en contacto con nosotros para lorem ipsum dolor sit amet. Con un enfoque basado en research y formación, consectetur adipiscing elit para que su equipo sed do eiusmod tempor con resultados validados.`,
-}));
-
-export const brands = ["ING", "MOA", "NATEEVO", "INDITEX", "DPROMA", "Lorem", "Ipsum", "Dolor"]; // TODO
+];

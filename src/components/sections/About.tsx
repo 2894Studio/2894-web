@@ -1,35 +1,27 @@
-import { Pill } from "@/components/Pill";
-import { studio } from "@/content/site";
+import { RevealPanel } from "@/components/RevealPanel";
+import { aboutImage, studio } from "@/content/site";
 
 export function About() {
   return (
-    <section id="nosotros" className="px-[var(--gutter)] pb-[var(--section-y)]" aria-labelledby="nosotros-h">
-      <h2 id="nosotros-h" className="text-[clamp(2.4rem,9vw,8rem)] font-light uppercase leading-[0.9] tracking-[-0.04em] text-balance">
-        Nosotros<span className="text-cobalt">.</span>
+    <section id="nosotros" className="px-[var(--gutter)] py-[var(--section-y)]" aria-labelledby="nosotros-h">
+      <h2 id="nosotros-h" className="sr-only">
+        Nosotros
       </h2>
-      <div className="mt-10 grid gap-10 md:grid-cols-2">
-        <p className="max-w-sm text-lg font-medium uppercase leading-tight sm:text-xl">
-          Alfabetización en IA para equipos que crean.
-        </p>
-        <div>
-          <p className="max-w-xl">{studio.intro}</p>
-          <ul className="mt-6 space-y-2 text-ink">
-            {studio.beyond.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-          <div className="mt-8">
-            <Pill href="#contacto">Get to know us</Pill>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-16 grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
+        <RevealPanel
+          image={aboutImage.src}
+          alt={aboutImage.alt}
+          title="Nosotros"
+          titleClassName="text-5xl sm:text-7xl"
+          sizes="(min-width:768px) 50vw, 100vw"
+          className="aspect-[4/5] md:row-span-2 md:aspect-auto md:min-h-[70svh]"
+        >
+          <p>{studio.intro}</p>
+        </RevealPanel>
         {studio.values.map((v) => (
-          <article key={v.title} className="bg-gray-soft p-8 md:p-10">
-            <h3 className="text-2xl uppercase tracking-tight">{v.title}</h3>
-            <p className="mt-4 text-ink">{v.text}</p>
-          </article>
+          <RevealPanel key={v.title} image={v.image} alt={v.alt} title={v.title} titleClassName="text-3xl sm:text-5xl" sizes="(min-width:768px) 50vw, 100vw" className="aspect-[4/3]">
+            <p>{v.text}</p>
+          </RevealPanel>
         ))}
       </div>
     </section>

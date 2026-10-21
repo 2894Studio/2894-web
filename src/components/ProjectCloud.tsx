@@ -93,7 +93,9 @@ export function ProjectCloud() {
       </div>
       <p className="mt-2 px-[var(--gutter)] text-sm uppercase tracking-wide text-ink md:hidden">Arrastra para explorar →</p>
 
-      <ul className="mt-12 grid gap-x-8 px-[var(--gutter)] sm:grid-cols-2 lg:grid-cols-3">
+      <details className="mt-10 px-[var(--gutter)]">
+        <summary className="min-h-11 cursor-pointer py-3 text-base uppercase tracking-wide">Índice</summary>
+      <ul className="mt-2 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p) => (
           <li key={p.id}>
             <button
@@ -107,6 +109,7 @@ export function ProjectCloud() {
           </li>
         ))}
       </ul>
+      </details>
 
       <dialog
         ref={dialog}
@@ -122,7 +125,6 @@ export function ProjectCloud() {
               <div>
                 <p className="text-[13px] uppercase tracking-wide text-ink/70">{active.meta.join(" · ")}</p>
                 <h3 className="mt-3 text-3xl font-light uppercase tracking-tight">{active.title}</h3>
-                <p className="mt-4 text-ink">{active.description}</p>
                 <p className="mt-6 text-[13px] text-ink">Imagen de stock: {active.credit}</p>
               </div>
               <div className="flex items-center justify-between gap-3">

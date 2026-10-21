@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { reel } from "@/content/site";
+import { reel, studio } from "@/content/site";
 
 const RM = "(prefers-reduced-motion: reduce)";
 const subscribeRM = (cb: () => void) => {
@@ -19,6 +19,7 @@ export function Hero() {
   const [loaded, setLoaded] = useState(false);
   const [muted, setMuted] = useState(true);
   const [open, setOpen] = useState(false);
+  const [info, setInfo] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -77,11 +78,25 @@ export function Hero() {
         )}
         <div className="absolute inset-0 bg-ink/25" />
 
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5 text-sm font-medium uppercase text-cloud sm:p-7">
-          <span>
-            2894<span className="text-sky">_</span> Studio
-          </span>
-          <span>Madrid · 2025</span>
+        <div className="absolute left-5 top-5 text-lg font-bold text-cloud sm:left-7 sm:top-7">
+          <h1>
+            2894<span className="text-sky">_</span>
+            <span className="sr-only"> Studio: {studio.headline}</span>
+          </h1>
+        </div>
+
+        <div className="absolute bottom-24 left-5 max-w-sm text-cloud sm:left-7">
+          <button
+            type="button"
+            aria-expanded={info}
+            onClick={() => setInfo((v) => !v)}
+            className="min-h-11 rounded-full bg-cloud/90 px-4 text-sm font-medium uppercase tracking-wide text-ink transition-colors hover:bg-sky focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
+          >
+            {info ? "Cerrar" : "Quiénes somos"}
+          </button>
+          <p hidden={!info} className="mt-3 text-xl font-light uppercase leading-tight">
+            {studio.headline}. {studio.twoBeat.join(" ")}
+          </p>
         </div>
 
         <div className="absolute bottom-24 right-5 flex gap-2 sm:bottom-24 sm:right-7">
