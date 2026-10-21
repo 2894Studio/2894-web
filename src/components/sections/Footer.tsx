@@ -18,7 +18,7 @@ export function Footer() {
         <ul className="flex flex-wrap gap-x-6 gap-y-2">
           {nav.map((n) => (
             <li key={n.href}>
-              <a href={n.href} className="inline-block min-h-11 py-2 hover:underline">
+              <a href={n.href} className="spring inline-block min-h-11 py-2 hover:text-sky">
                 {n.label}
               </a>
             </li>

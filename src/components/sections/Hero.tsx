@@ -1,39 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
+import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import { reel, studio } from "@/content/site";
 
-const RM = "(prefers-reduced-motion: reduce)";
-const subscribeRM = (cb: () => void) => {
-  const mq = window.matchMedia(RM);
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
+const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
 
-const embed = (extra: string) =>
-  `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?${extra}`;
-
-// Hero = showreel (referencia: mendesaltaren). Vídeo a pantalla completa en marco redondeado sobre cobalto.
+// Hero = showreel a pantalla completa. Con el scroll se enmarca con bordes redondeados (referencia: cm.studio).
 export function Hero() {
-  const motion = !useSyncExternalStore(subscribeRM, () => window.matchMedia(RM).matches, () => true);
+  const reduced = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [open, setOpen] = useState(false);
-  const [info, setInfo] = useState(false);
-  const frame = useRef<HTMLIFrameElement>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const header = useRef<HTMLElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const player = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    const d = dialog.current;
-    if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
-  }, [open]);
-
-  // Muestra el iframe solo cuando YouTube confirma que está reproduciendo (si el embed no está disponible, queda el poster).
+  // Muestra el vídeo solo cuando YouTube confirma que está reproduciendo; mientras, el fotograma.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      if (e.source !== frame.current?.contentWindow || typeof e.data !== "string") return;
+      if (e.source !== player.current?.contentWindow || typeof e.data !== "string") return;
       try {
         const d = JSON.parse(e.data);
         if (d.event === "onStateChange" ? d.info === 1 : d.info?.playerState === 1) setLoaded(true);
@@ -43,110 +28,42 @@ export function Hero() {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  const send = (func: string) =>
-    frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), "*");
-
-  const toggleSound = () => {
-    send(muted ? "unMute" : "mute");
-    setMuted((m) => !m);
-  };
+  useEffect(() => {
+    if (reduced || !header.current || !frame.current) return;
+    const ctx = gsap.context(() => {
+      const scrollTrigger = { trigger: header.current, start: "top top", end: "bottom 35%", scrub: 0.6 };
+      gsap.to(header.current, { padding: 16, ease: "none", scrollTrigger });
+      gsap.to(frame.current, { borderRadius: 28, ease: "none", scrollTrigger });
+    });
+    ScrollTrigger.refresh();
+    return () => ctx.revert();
+  }, [reduced]);
 
   return (
-    <header className="bg-cobalt p-2 sm:p-4">
-      <div className="relative h-[calc(100svh-1rem)] overflow-hidden rounded-[1.25rem] bg-ink [container-type:size] sm:h-[calc(100svh-2rem)] sm:rounded-[1.75rem]">
+    <header ref={header} className="h-svh bg-cloud">
+      <div ref={frame} className="relative h-full overflow-hidden bg-ink [container-type:size]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={reel.poster}
-          alt=""
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${loaded ? "opacity-0" : "opacity-100"}`}
-        />
-        {motion && (
+        <img src={reel.poster} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${loaded ? "opacity-0" : "opacity-100"}`} />
+        {!reduced && (
           <iframe
-            ref={frame}
+            ref={player}
             title="Showreel 2894_"
             aria-hidden
             tabIndex={-1}
             loading="eager"
             referrerPolicy="strict-origin-when-cross-origin"
             allow="autoplay; encrypted-media"
-            onLoad={() => frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening" }), "*")}
-            src={embed(
-              `autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`,
-            )}
+            onLoad={() => player.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening" }), "*")}
+            src={src}
             className={`pointer-events-none absolute left-1/2 top-1/2 h-[max(100cqh,56.25cqw)] w-[max(100cqw,177.78cqh)] -translate-x-1/2 -translate-y-1/2 border-0 transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`}
           />
         )}
-        <div className="absolute inset-0 bg-ink/25" />
-
-        <div className="absolute left-5 top-5 text-lg font-bold text-cloud sm:left-7 sm:top-7">
-          <h1>
-            2894<span className="text-sky">_</span>
-            <span className="sr-only"> Studio: {studio.headline}</span>
-          </h1>
-        </div>
-
-        <div className="absolute bottom-24 left-5 max-w-sm text-cloud sm:left-7">
-          <button
-            type="button"
-            aria-expanded={info}
-            onClick={() => setInfo((v) => !v)}
-            className="min-h-11 rounded-full bg-cloud/90 px-4 text-sm font-medium uppercase tracking-wide text-ink transition-colors hover:bg-sky focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
-          >
-            {info ? "Cerrar" : "Quiénes somos"}
-          </button>
-          <p hidden={!info} className="mt-3 text-xl font-light uppercase leading-tight">
-            {studio.headline}. {studio.twoBeat.join(" ")}
-          </p>
-        </div>
-
-        <div className="absolute bottom-24 right-5 flex gap-2 sm:bottom-24 sm:right-7">
-          {motion && (
-            <button
-              type="button"
-              onClick={toggleSound}
-              aria-pressed={!muted}
-              className="min-h-11 rounded-full bg-cloud/90 px-4 text-sm font-medium uppercase tracking-wide text-ink transition-colors hover:bg-sky focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
-            >
-              Sound {muted ? "off" : "on"}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium uppercase tracking-wide text-cloud transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
-          >
-            ▶ {reel.label}
-          </button>
-        </div>
+        <div className="absolute inset-0 bg-ink/15" />
+        <h1 className="absolute left-5 top-5 text-lg font-bold text-cloud sm:left-7 sm:top-7">
+          2894<span className="text-sky">_</span>
+          <span className="sr-only"> Studio: {studio.headline}</span>
+        </h1>
       </div>
-
-      <dialog
-        ref={dialog}
-        onClose={() => setOpen(false)}
-        onClick={(e) => e.target === dialog.current && setOpen(false)}
-        aria-label="Showreel"
-        className="m-auto w-[min(94vw,1200px)] rounded-2xl bg-ink p-0 backdrop:bg-ink/80"
-      >
-        {open && (
-          <div className="relative aspect-video w-full">
-            <iframe
-              title="Showreel 2894_ completo"
-              allow="autoplay; encrypted-media; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              src={embed("autoplay=1&rel=0&modestbranding=1&playsinline=1")}
-              className="absolute inset-0 h-full w-full border-0"
-            />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="absolute right-3 top-3 min-h-11 rounded-full bg-cloud px-4 text-sm font-medium uppercase"
-        >
-          Cerrar
-        </button>
-      </dialog>
     </header>
   );
 }

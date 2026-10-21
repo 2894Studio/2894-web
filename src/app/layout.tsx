@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -17,13 +18,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#efefef",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${dmSans.variable} h-full antialiased`}>
-      <body className="min-h-full bg-cloud text-ink">{children}</body>
+      <body className="min-h-full bg-cloud text-ink">
+        <SmoothScroll />
+        {children}
+      </body>
     </html>
   );
 }

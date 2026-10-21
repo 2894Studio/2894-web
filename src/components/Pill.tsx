@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { Magnetic } from "@/components/Magnetic";
 
 type Props = ComponentProps<"a"> & { variant?: "dark" | "cobalt" | "light" };
 
@@ -10,9 +11,11 @@ const variants = {
 
 export function Pill({ variant = "cobalt", className = "", ...props }: Props) {
   return (
-    <a
-      {...props}
-      className={`inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium uppercase tracking-wide transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt ${variants[variant]} ${className}`}
-    />
+    <Magnetic>
+      <a
+        {...props}
+        className={`spring inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt ${variants[variant]} ${className}`}
+      />
+    </Magnetic>
   );
 }
