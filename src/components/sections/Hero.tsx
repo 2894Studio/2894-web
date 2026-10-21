@@ -66,6 +66,7 @@ export function Hero() {
             aria-hidden
             tabIndex={-1}
             loading="eager"
+            referrerPolicy="strict-origin-when-cross-origin"
             allow="autoplay; encrypted-media"
             onLoad={() => frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening" }), "*")}
             src={embed(
@@ -117,6 +118,7 @@ export function Hero() {
               title="Showreel 2894_ completo"
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
               src={embed("autoplay=1&rel=0&modestbranding=1&playsinline=1")}
               className="absolute inset-0 h-full w-full border-0"
             />
