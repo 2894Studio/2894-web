@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { gsap } from "gsap";
 import { Pill } from "@/components/Pill";
 import { projects } from "@/content/site";
@@ -82,7 +83,7 @@ export function ProjectCloud() {
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.25] group-focus-visible:scale-[1.25]"
                 />
-                <span className="pointer-events-none absolute left-0 top-full z-10 mt-2 whitespace-nowrap bg-cobalt px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-cloud opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <span className="pointer-events-none absolute left-0 top-full z-10 mt-2 whitespace-nowrap bg-cobalt px-2 py-1 text-[13px] font-medium uppercase tracking-wide text-cloud opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                   {p.title} · {p.category}
                 </span>
               </button>
@@ -90,19 +91,18 @@ export function ProjectCloud() {
           ))}
         </div>
       </div>
-      <p className="mt-2 px-[var(--gutter)] text-xs uppercase tracking-wide text-ink/50 md:hidden">Arrastra para explorar →</p>
+      <p className="mt-2 px-[var(--gutter)] text-sm uppercase tracking-wide text-ink md:hidden">Arrastra para explorar →</p>
 
       <ul className="mt-12 grid gap-x-8 px-[var(--gutter)] sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((p, i) => (
-          <li key={p.id} className="border-t border-ink/20">
+        {projects.map((p) => (
+          <li key={p.id}>
             <button
               type="button"
               onClick={() => setActive(p)}
               className="flex min-h-11 w-full items-baseline justify-between gap-4 py-3 text-left uppercase transition-colors hover:text-cobalt focus-visible:outline-2 focus-visible:outline-cobalt"
             >
-              <span className="text-xs text-ink/50">{String(i + 1).padStart(2, "0")}</span>
-              <span className="flex-1 text-sm tracking-tight">{p.title}</span>
-              <span className="text-xs text-ink/60">{p.category}</span>
+              <span className="flex-1 text-base tracking-tight">{p.title}</span>
+              <span className="text-sm text-ink">{p.category}</span>
             </button>
           </li>
         ))}
@@ -117,13 +117,13 @@ export function ProjectCloud() {
       >
         {active && (
           <div className="grid md:grid-cols-[1.4fr_1fr]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={active.imageLarge} alt={`${active.title} — imagen de ejemplo`} className="h-full max-h-[70svh] w-full object-cover" />
+            <div className="relative min-h-[50svh] md:min-h-[70svh]"><Image src={active.imageLarge} alt={active.imageAlt} fill sizes="(min-width:768px) 600px, 94vw" className="object-cover" /></div>
             <div className="flex flex-col justify-between gap-8 p-6 md:p-8">
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-ink/70">{active.meta.join(" · ")}</p>
+                <p className="text-[13px] uppercase tracking-wide text-ink/70">{active.meta.join(" · ")}</p>
                 <h3 className="mt-3 text-3xl font-light uppercase tracking-tight">{active.title}</h3>
-                <p className="mt-4 text-ink/80">{active.description}</p>
+                <p className="mt-4 text-ink">{active.description}</p>
+                <p className="mt-6 text-[13px] text-ink">Imagen de stock: {active.credit}</p>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <Pill href="#">View case study</Pill>
@@ -131,9 +131,9 @@ export function ProjectCloud() {
                   type="button"
                   autoFocus
                   onClick={() => setActive(null)}
-                  className="min-h-11 rounded-full border border-ink px-4 text-xs font-medium uppercase hover:bg-ink hover:text-cloud"
+                  className="min-h-11 rounded-full border border-ink px-4 text-sm font-medium uppercase hover:bg-ink hover:text-cloud"
                 >
-                  Close —
+                  Cerrar
                 </button>
               </div>
             </div>

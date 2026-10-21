@@ -1,6 +1,8 @@
 // Contenido de la web. Todo lo marcado TODO es placeholder (lorem ipsum / stock)
 // y se sustituye aquí sin tocar los componentes.
 
+import { stock } from "./stock";
+
 export const LOREM =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 
@@ -8,7 +10,8 @@ export const studio = {
   name: "2894_",
   tagline: "Intelligent tools. Human imagination.",
   // Titular en dos tiempos, como la referencia. TODO: validar con el cliente
-  headline: "Estudio de IA y diseño impulsado por research y estrategia",
+  headline: "Estudio de IA y diseño"
+  ,subline: "Impulsado por research y estrategia.",
   twoBeat: ["Pensado para crear.", "Hecho para conectar."],
   // Fuente: LinkedIn de 2894_
   positioning:
@@ -69,11 +72,14 @@ const cloud: { title: string; category: string; x: number; y: number; w: number;
 
 export const projects = cloud.map((p, i) => ({
   ...p,
+  ar: Math.min(0.95, Math.max(0.6, stock[i].w / stock[i].h)),
   id: `p${String(i + 1).padStart(2, "0")}`,
   description: LOREM,
   meta: [p.category, "Research", "Estrategia"],
-  image: `https://picsum.photos/seed/2894-cloud-${i + 1}/600/${Math.round(600 / p.ar)}`,
-  imageLarge: `https://picsum.photos/seed/2894-cloud-${i + 1}/1400/1000`,
+  image: stock[i].src,
+  imageLarge: stock[i].src,
+  imageAlt: stock[i].title,
+  credit: stock[i].credit,
 }));
 
 export const reel = {

@@ -23,7 +23,7 @@ export function Navbar() {
   return (
     <>
       <nav aria-label="Principal" className="fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 sm:block">
-        <ul className="flex items-center gap-1 rounded-full border border-white/40 bg-cloud/85 p-1.5 shadow-[0_10px_40px_rgb(10_70_255/0.25)] backdrop-blur-xl">
+        <ul className="flex items-center gap-1 rounded-full border border-white/40 bg-cloud/85 p-1.5 backdrop-blur-xl">
           <li className="pl-4 pr-3 text-sm font-bold">
             2894<span className="text-cobalt">_</span>
           </li>
@@ -53,9 +53,9 @@ export function Navbar() {
         aria-expanded={open}
         aria-controls="menu-movil"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-4 right-4 z-[60] min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium uppercase text-cloud shadow-[0_10px_30px_rgb(10_70_255/0.35)] sm:hidden"
+        className="fixed bottom-4 right-4 z-[60] min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium uppercase text-cloud sm:hidden"
       >
-        {open ? "Close —" : "Menu +"}
+        {open ? "Cerrar" : "Menu +"}
       </button>
 
       <div id="menu-movil" hidden={!open} className="fixed inset-0 z-50 flex flex-col justify-end bg-cobalt px-[var(--gutter)] pb-24 text-cloud sm:hidden">

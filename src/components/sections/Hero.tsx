@@ -75,7 +75,7 @@ export function Hero() {
             className={`pointer-events-none absolute left-1/2 top-1/2 h-[max(100cqh,56.25cqw)] w-[max(100cqw,177.78cqh)] -translate-x-1/2 -translate-y-1/2 border-0 transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/40 via-transparent to-ink/20" />
+        <div className="absolute inset-0 bg-ink/25" />
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5 text-sm font-medium uppercase text-cloud sm:p-7">
           <span>
@@ -90,7 +90,7 @@ export function Hero() {
               type="button"
               onClick={toggleSound}
               aria-pressed={!muted}
-              className="min-h-11 rounded-full bg-cloud/90 px-4 text-xs font-medium uppercase tracking-wide text-ink backdrop-blur transition-colors hover:bg-sky focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
+              className="min-h-11 rounded-full bg-cloud/90 px-4 text-sm font-medium uppercase tracking-wide text-ink transition-colors hover:bg-sky focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
             >
               Sound {muted ? "off" : "on"}
             </button>
@@ -98,7 +98,7 @@ export function Hero() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="min-h-11 rounded-full bg-cobalt px-5 text-xs font-medium uppercase tracking-wide text-cloud transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
+            className="min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium uppercase tracking-wide text-cloud transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud"
           >
             ▶ {reel.label}
           </button>
@@ -127,9 +127,9 @@ export function Hero() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="absolute right-3 top-3 min-h-11 rounded-full bg-cloud px-4 text-xs font-medium uppercase"
+          className="absolute right-3 top-3 min-h-11 rounded-full bg-cloud px-4 text-sm font-medium uppercase"
         >
-          Close —
+          Cerrar
         </button>
       </dialog>
     </header>

@@ -12,7 +12,7 @@ export function Pill({ variant = "cobalt", className = "", ...props }: Props) {
   return (
     <a
       {...props}
-      className={`inline-flex min-h-11 items-center rounded-full px-5 text-xs font-medium uppercase tracking-wide transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt ${variants[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium uppercase tracking-wide transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt ${variants[variant]} ${className}`}
     />
   );
 }
