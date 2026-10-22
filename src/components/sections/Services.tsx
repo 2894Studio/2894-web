@@ -7,11 +7,11 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import { services } from "@/content/site";
 
 const LAST = services.length - 1;
-// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = azul oscuro.
+// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = azul de marca.
 const BG = [
   [11, 11, 13],
   [219, 232, 251],
-  [10, 36, 112],
+  [10, 70, 255],
 ];
 const DARK = [true, false, true];
 
@@ -73,6 +73,7 @@ export function Services() {
   }, [reduced]);
 
   const dark = DARK[active];
+  const brand = active === LAST; // sobre el azul de marca el acento es blanco
 
   return (
     <section ref={section} id="servicios" aria-labelledby="servicios-h" className="relative overflow-hidden">
@@ -93,11 +94,11 @@ export function Services() {
       {!reduced && (
         <div aria-hidden className={`absolute inset-x-[var(--gutter)] top-8 z-10 transition-colors duration-700 ${dark ? "text-cloud" : "text-ink"}`}>
           <div className={`relative h-0.5 ${dark ? "bg-cloud/25" : "bg-ink/20"}`}>
-            <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${dark ? "bg-sky" : "bg-cobalt"}`} />
+            <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${brand ? "bg-cloud" : dark ? "bg-sky" : "bg-cobalt"}`} />
           </div>
           <div className="mt-3 flex justify-between text-sm font-medium uppercase tracking-wide">
             {services.map((s, i) => (
-              <span key={s.key} className={i === active ? (dark ? "text-sky" : "text-cobalt") : "opacity-70"}>
+              <span key={s.key} className={i === active ? (brand ? "text-cloud underline underline-offset-4" : dark ? "text-sky" : "text-cobalt") : brand ? "" : "opacity-70"}>
                 {s.key}
               </span>
             ))}
