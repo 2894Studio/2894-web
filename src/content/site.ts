@@ -40,6 +40,8 @@ export const projects = list.map(([title, category], i) => ({
   title,
   category,
   meta: [category, "Research", "Estrategia"],
+  // TODO: reseña real de cada proyecto
+  review: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.",
   image: stock[i].src,
   imageAlt: stock[i].title,
   credit: stock[i].credit,

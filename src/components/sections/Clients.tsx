@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Pill } from "@/components/Pill";
+import { SectionTitle } from "@/components/SectionTitle";
 import { clients } from "@/content/site";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 
@@ -29,9 +30,7 @@ export function Clients() {
 
   return (
     <section id="clients" className="py-[var(--section-y)]" aria-labelledby="clients-h">
-      <h2 id="clients-h" className="px-[var(--gutter)] text-[clamp(2.4rem,9vw,7rem)] font-light uppercase leading-[0.9] tracking-[-0.04em] text-balance">
-        Clientes<span className="text-cobalt">.</span>
-      </h2>
+      <SectionTitle id="clients-h" text="Clientes" />
 
       <ul ref={list} className="mx-[var(--gutter)] mt-12 border-b border-ink" onPointerLeave={() => setHover(null)}>
         {clients.map((c, i) => {
