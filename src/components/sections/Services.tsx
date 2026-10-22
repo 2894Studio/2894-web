@@ -7,13 +7,13 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import { services } from "@/content/site";
 
 const LAST = services.length - 1;
-// Fondo de cada palabra: Discover = escáner sobre tinta; Apply y Grow = cielo.
+// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = azul oscuro.
 const BG = [
   [11, 11, 13],
   [219, 232, 251],
-  [143, 191, 255],
+  [10, 36, 112],
 ];
-const DARK = [true, false, false];
+const DARK = [true, false, true];
 
 const mix = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
 const smooth = (a: number, b: number, x: number) => {
@@ -126,9 +126,6 @@ export function Services() {
                     {ch}
                   </span>
                 ))}
-                <span aria-hidden className={`cursor-blink ${isDark ? "text-sky" : "text-cobalt"}`}>
-                  _
-                </span>
               </h3>
               <p
                 className="mt-6 max-w-xl text-lg font-medium sm:text-xl transition-[transform,opacity] duration-700 ease-out"

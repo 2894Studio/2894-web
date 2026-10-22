@@ -8,7 +8,7 @@ export function SectionTitle({ id, text, className = "" }: { id: string; text: s
       <span aria-hidden>
         <SplitText text={text} tag="span" textAlign="left" splitType="chars" delay={28} duration={1} mask trigger="view" />
       </span>
-      <span aria-hidden className="cursor-blink text-cobalt">_</span>
+      <span aria-hidden className="text-cobalt">_</span>
     </h2>
   );
 }
