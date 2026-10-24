@@ -194,11 +194,11 @@ export function ProjectSphere() {
         ))}
       </div>
 
-      {/* Reseña del proyecto: abajo a la derecha en escritorio, bajo la esfera en móvil */}
+      {/* Reseña del proyecto: abajo a la izquierda en escritorio (no se pierde con la navegación), bajo la esfera en móvil */}
       <aside
         data-review
         aria-live="polite"
-        className={`mx-[var(--gutter)] mt-6 max-w-sm transition-[opacity,translate] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] lg:absolute lg:bottom-0 lg:right-0 lg:mx-0 lg:mt-0 lg:w-[calc((100%-min(94vw,80svh))/2-2rem)] ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+        className={`mx-[var(--gutter)] mt-6 max-w-sm transition-[opacity,translate] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] lg:absolute lg:bottom-0 lg:left-[var(--gutter)] lg:mx-0 lg:mt-0 lg:w-[calc((100%-min(94vw,80svh))/2-2rem)] ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
       >
         {shown && (
           <div key={shown.id} className="label-in">
@@ -233,19 +233,6 @@ export function ProjectSphere() {
         {front}
       </p>
 
-      <details className="mx-auto mt-8 w-[min(94vw,60rem)] lg:mx-[var(--gutter)] lg:w-auto lg:max-w-md">
-        <summary className="min-h-11 cursor-pointer py-3 text-base uppercase tracking-wide">Índice</summary>
-        <ul className="mt-2 grid gap-x-8">
-          {projects.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => setPinned(p)} className="flex min-h-11 w-full items-baseline justify-between gap-4 py-2 text-left uppercase hover:text-cobalt focus-visible:outline-2 focus-visible:outline-cobalt">
-                <span className="text-base tracking-tight">{p.title}</span>
-                <span className="text-sm">{p.category}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </details>
     </div>
   );
 }

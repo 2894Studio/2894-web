@@ -188,3 +188,9 @@ html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
 
+
+/* Las máscaras de letras dejan aire arriba, abajo y a los lados: ninguna letra queda cortada. */
+.split-char-mask, .split-word-mask, .split-line-mask {
+  padding: 0.08em 0.04em 0.14em;
+  margin: -0.08em -0.04em -0.14em;
+}

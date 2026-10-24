@@ -25,7 +25,7 @@ export function Navbar() {
       <nav aria-label="Principal" className="fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 sm:block">
         <ul className="flex items-center gap-1 rounded-full border border-white/40 bg-cloud/85 p-1.5 shadow-[0_10px_40px_rgb(10_70_255/0.25)] backdrop-blur-xl">
           <li className="pl-4 pr-3 text-sm font-bold">
-            2894<span className="text-cobalt">_</span>
+            2894_
           </li>
           {links.map((item) => (
             <li key={item.href}>

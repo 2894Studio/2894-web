@@ -66,7 +66,7 @@ export function Hero() {
         </div>
         <div className="absolute inset-0 bg-ink/15" />
         <h1 className="absolute left-5 top-5 text-lg font-bold text-cloud sm:left-7 sm:top-7">
-          2894<span className="text-sky">_</span>
+          2894_
           <span className="sr-only"> Studio: {studio.headline}</span>
         </h1>
       </div>
