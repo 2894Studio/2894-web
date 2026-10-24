@@ -13,7 +13,7 @@ const LAST = services.length - 1;
 const BG = [
   [11, 11, 13],
   [219, 232, 251],
-  [120, 166, 222],
+  [111, 159, 219],
 ];
 const DARK = [true, false, false];
 
@@ -112,7 +112,7 @@ export function Services() {
               <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
             )}
           </div>
-          <div ref={skyLayer} className="absolute inset-0 bg-[linear-gradient(180deg,#4f88d0_0%,#7aa9e0_45%,#cfe3f7_100%)]" style={{ opacity: 0 }}>
+          <div ref={skyLayer} className="absolute inset-0 bg-[linear-gradient(180deg,#4a7fca_0%,#6f9fdb_50%,#9cc0ea_100%)]" style={{ opacity: 0 }}>
             {near && <CloudSky active={sky} />}
           </div>
         </div>
