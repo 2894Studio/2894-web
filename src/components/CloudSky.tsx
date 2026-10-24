@@ -154,7 +154,8 @@ const CLOUDS: [number, number, number, number][] = [
 
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
-export function CloudSky({ active = true }: { active?: boolean }) {
+// lit/shade: color de la cara iluminada y de la sombra (por defecto, las nubes de Magritte).
+export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeHex = "#9db4d4" }: { active?: boolean; lit?: string; shade?: string }) {
   const host = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   useEffect(() => {
@@ -338,8 +339,8 @@ export function CloudSky({ active = true }: { active?: boolean }) {
     });
     io.observe(el);
 
-    const lit = hex("#fefefe");
-    const shade = hex("#9db4d4"); // gris azulado de las nubes de Magritte
+    const lit = hex(litHex);
+    const shade = hex(shadeHex);
     const clouds = new Float32Array(COUNT * 4);
     let last = performance.now(), phase = 0, ema = 1 / 60, frames = 0, nextAdapt = 0;
     let raf = 0;
@@ -402,7 +403,7 @@ export function CloudSky({ active = true }: { active?: boolean }) {
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };
-  }, []);
+  }, [litHex, shadeHex]);
 
   return (
     <div ref={host} aria-hidden className="group/sky absolute inset-0">

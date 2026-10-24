@@ -1,5 +1,5 @@
 import { Navbar } from "@/components/Navbar";
-import { Scene, SceneStack, TransitionPicker } from "@/components/Scenes";
+import { Scene, SceneStack } from "@/components/Scenes";
 import { Clients } from "@/components/sections/Clients";
 import { Footer } from "@/components/sections/Footer";
 import { Hero } from "@/components/sections/Hero";
@@ -11,7 +11,6 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <TransitionPicker />
       <SceneStack>
         {/* `contents`: todas las escenas (también el cierre) son hermanas para poder apilarse. */}
         <main className="contents">

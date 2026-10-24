@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { gsap } from "@/lib/gsap";
 import { CopyEmail } from "@/components/CopyEmail";
-import { useTransition } from "@/components/Scenes";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { nav, studio } from "@/content/site";
 import { stock } from "@/content/stock";
@@ -23,8 +22,6 @@ const Chars = ({ text }: { text: string }) => (
 // Cierre: la página pasa poco a poco de blanco a azul y después aparece el contacto, letra a letra.
 export function Footer() {
   const reduced = useReducedMotion();
-  // Con parallax el cierre entra en blanco y se tiñe una vez arriba; con fundido el azul empieza durante el fundido.
-  const fadeIn = useTransition() === "fade";
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
@@ -33,7 +30,7 @@ export function Footer() {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: "none" },
-        scrollTrigger: { trigger: root.current, start: fadeIn ? "top bottom" : "top top", end: "bottom bottom", scrub: 0.6 },
+        scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.6 },
       });
       tl.fromTo(stage.current, { backgroundColor: "#ffffff", color: "#0b0b0d" }, { backgroundColor: "#0a46ff", color: "#ffffff", duration: 1 })
         .from("[data-email] [data-char]", { yPercent: 110, stagger: 0.02, duration: 0.5, ease: "power2.out" }, 0.75)
@@ -42,7 +39,7 @@ export function Footer() {
         .to({}, { duration: 0.3 });
     }, root);
     return () => ctx.revert();
-  }, [reduced, fadeIn]);
+  }, [reduced]);
 
   return (
     <footer ref={root} id="contacto" className={reduced ? "" : "h-[220svh]"}>

@@ -9,11 +9,11 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import { applyImages, services } from "@/content/site";
 
 const LAST = services.length - 1;
-// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = cielo de Magritte con nubes.
+// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = blanco con nubes (texto en diferencia).
 const BG = [
   [11, 11, 13],
   [219, 232, 251],
-  [111, 159, 219],
+  [255, 255, 255],
 ];
 const DARK = [true, false, false];
 
@@ -42,6 +42,7 @@ export function Services() {
   const bg = useRef<HTMLDivElement>(null);
   const scanLayer = useRef<HTMLDivElement>(null);
   const skyLayer = useRef<HTMLDivElement>(null);
+  const ruler = useRef<HTMLDivElement>(null);
   const shots = useRef<(HTMLDivElement | null)[]>([]);
   const [sky, setSky] = useState(false);
   const [active, setActive] = useState(0);
@@ -66,12 +67,13 @@ export function Services() {
       if (scanLayer.current) scanLayer.current.style.opacity = String(0.6 * (1 - smooth(0.2, 0.5, x)));
       if (skyLayer.current) skyLayer.current.style.opacity = String(smooth(1.3, 1.7, x));
       setSky(x > 1.2);
-      // Apply: cada imagen se descubre desde abajo según avanza el recorrido y se va al pasar a Grow.
+      // Apply: cada imagen entra creciendo desde su centro (con un leve rebote) y sale encogiéndose al pasar a Grow.
       shots.current.forEach((el, k) => {
         if (!el) return;
         const t = smooth(0.45 + k * 0.08, 0.7 + k * 0.08, x) * (1 - smooth(1.3, 1.55, x));
-        el.style.clipPath = `inset(${(1 - t) * 100}% 0 0 0 round 16px)`;
-        el.style.transform = `translate3d(${(1 - x) * SLOTS[k].d * 120}px, 0, 0) scale(${1.15 - 0.15 * t})`;
+        const sc = t * (1 + 0.12 * Math.sin(Math.PI * t));
+        el.style.transform = `translate3d(${(1 - x) * SLOTS[k].d * 120}px, 0, 0) scale(${sc})`;
+        el.style.visibility = t > 0.001 ? "" : "hidden";
       });
       if (fill.current) fill.current.style.transform = `scaleX(${p})`;
       setActive(Math.min(LAST, Math.round(x)));
@@ -80,6 +82,12 @@ export function Services() {
       gsap.to(track.current, {
         x: () => -dist(),
         ease: "none",
+        // El fondo vive dentro del recorrido (para que el texto de Grow pueda mezclarse en diferencia con las
+        // nubes) y se contrarresta para que parezca fijo.
+        onUpdate() {
+          if (bg.current) bg.current.style.transform = `translate3d(${-Number(gsap.getProperty(track.current, "x"))}px,0,0)`;
+          paint(this.progress());
+        },
         scrollTrigger: {
           trigger: section.current,
           start: "top top",
@@ -87,7 +95,8 @@ export function Services() {
           pin: true,
           scrub: 0.8,
           invalidateOnRefresh: true,
-          onUpdate: (self) => paint(self.progress),
+          // La barra de progreso solo aparece con la sección ya fijada en pantalla.
+          onToggle: (self) => ruler.current && (ruler.current.style.opacity = self.isActive ? "1" : "0"),
         },
       });
     }, section);
@@ -106,20 +115,7 @@ export function Services() {
       </h2>
 
       {!reduced && (
-        <div ref={bg} aria-hidden className="absolute inset-0" style={{ backgroundColor: "rgb(11,11,13)" }}>
-          <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.6 }}>
-            {near && (
-              <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
-            )}
-          </div>
-          <div ref={skyLayer} className="absolute inset-0 bg-[linear-gradient(180deg,#4a7fca_0%,#6f9fdb_50%,#9cc0ea_100%)]" style={{ opacity: 0 }}>
-            {near && <CloudSky active={sky} />}
-          </div>
-        </div>
-      )}
-
-      {!reduced && (
-        <div aria-hidden className={`absolute inset-x-[var(--gutter)] top-8 z-10 transition-colors duration-700 ${dark ? "text-cloud" : "text-ink"}`}>
+        <div ref={ruler} aria-hidden className={`absolute inset-x-[var(--gutter)] top-8 z-10 transition-[color,opacity] duration-700 ${dark ? "text-cloud" : "text-ink"}`} style={{ opacity: 0 }}>
           <div className={`relative h-0.5 ${dark ? "bg-cloud/25" : "bg-ink/20"}`}>
             <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${brand ? "bg-ink" : dark ? "bg-sky" : "bg-cobalt"}`} />
           </div>
@@ -134,9 +130,23 @@ export function Services() {
       )}
 
       <div ref={track} className={`relative ${reduced ? "flex flex-col" : "flex h-svh w-max"}`}>
+        {!reduced && (
+          <div ref={bg} aria-hidden className="absolute left-0 top-0 h-svh w-screen" style={{ backgroundColor: "rgb(11,11,13)" }}>
+            <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.6 }}>
+              {near && (
+                <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
+              )}
+            </div>
+            <div ref={skyLayer} className="absolute inset-0 bg-cloud" style={{ opacity: 0 }}>
+              {near && <CloudSky active={sky} lit="#e9f0fa" shade="#7fa6dc" />}
+            </div>
+          </div>
+        )}
         {services.map((s, i) => {
           const on = reduced || i === active;
           const isDark = DARK[i];
+          // Grow: texto blanco en modo diferencia → negro sobre el blanco, invertido donde pasa una nube.
+          const blend = i === LAST && !reduced ? "text-cloud mix-blend-difference" : "";
           return (
             <div
               key={s.key}
@@ -151,14 +161,14 @@ export function Services() {
                       shots.current[k] = el;
                     }}
                     aria-hidden
-                    className="absolute aspect-[4/5] overflow-hidden rounded-2xl will-change-transform"
-                    style={{ left: SLOTS[k].l, top: SLOTS[k].t, width: SLOTS[k].w, clipPath: "inset(100% 0 0 0)" }}
+                    className="absolute aspect-[4/5] overflow-hidden will-change-transform"
+                    style={{ left: SLOTS[k].l, top: SLOTS[k].t, width: SLOTS[k].w, transform: "scale(0)", visibility: "hidden" }}
                   >
                     <Image src={img.src} alt="" fill sizes="15vw" className="object-cover" />
                   </div>
                 ))}
               {/* Margen interno en la máscara para que ninguna letra (p. ej. la Y) quede cortada. */}
-              <h3 aria-label={s.key} className="relative flex overflow-hidden px-[0.04em] pb-[0.14em] pt-[0.08em] text-[clamp(4rem,18vw,20rem)] font-light uppercase leading-none tracking-[-0.05em]">
+              <h3 aria-label={s.key} className={`relative flex overflow-hidden ${blend} px-[0.04em] pb-[0.14em] pt-[0.08em] text-[clamp(4rem,18vw,20rem)] font-light uppercase leading-none tracking-[-0.05em]`}>
                 {s.key.split("").map((ch, j) => (
                   <span
                     key={j}
@@ -171,7 +181,7 @@ export function Services() {
                 ))}
               </h3>
               <p
-                className="relative mt-2 max-w-xl text-lg font-medium sm:text-xl transition-[transform,opacity] duration-700 ease-out"
+                className={`relative mt-2 max-w-xl text-lg font-medium sm:text-xl transition-[transform,opacity] duration-700 ease-out ${blend}`}
                 style={{ transform: on ? "translateY(0)" : "translateY(16px)", opacity: on ? 1 : 0, transitionDelay: on ? "250ms" : "0ms" }}
               >
                 {s.text}
