@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { gsap } from "@/lib/gsap";
+import { CopyEmail } from "@/components/CopyEmail";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { nav, studio } from "@/content/site";
 import { stock } from "@/content/stock";
@@ -53,9 +54,12 @@ export function Footer() {
             <Chars text={studio.email} />
           </span>
         </a>
-        <a data-reveal href={`tel:${studio.phone.replace(/\s/g, "")}`} className="mt-4 inline-block min-h-11 self-start py-2 text-xl hover:text-sky">
-          {studio.phone}
-        </a>
+        <div data-reveal className="mt-4 flex flex-wrap items-center gap-3">
+          <a href={`tel:${studio.phone.replace(/\s/g, "")}`} className="inline-block min-h-11 py-2 text-xl hover:text-sky">
+            {studio.phone}
+          </a>
+          <CopyEmail email={studio.email} />
+        </div>
 
         <div data-reveal className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
