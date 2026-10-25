@@ -219,7 +219,8 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, NX, NY, 0, gl.RG, gl.FLOAT, disp);
 
-    const P = { push: 1, radius: 0.75, spring: 6 };
+    // Empuje y radio pensados para que tocar una nube se note: se abre al paso del cursor y vuelve con el muelle.
+    const P = { push: 1.8, radius: 0.95, spring: 6, cap: 0.85 };
     const ptr = { tx: 0, ty: 0, x: 0, y: 0, vx: 0, vy: 0, active: false, on: false, was: false };
 
     const inject = (h: number) => {
@@ -260,8 +261,8 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
           disp[n] += vel[n] * h;
           disp[n + 1] += vel[n + 1] * h;
           const len = Math.hypot(disp[n], disp[n + 1]);
-          if (len > 0.6) {
-            const f = 0.6 / len;
+          if (len > P.cap) {
+            const f = P.cap / len;
             disp[n] *= f;
             disp[n + 1] *= f;
           }
@@ -284,8 +285,27 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
     const onLeave = () => {
       ptr.active = false;
     };
+    // Clic o toque sobre el cielo: ráfaga radial (la nube "se abre" y se recompone).
+    const onDown = (e: PointerEvent) => {
+      onMove(e);
+      if (!ptr.active || !activeRef.current || reduce) return;
+      const sigma = 0.7, inv2 = 1 / (2 * sigma * sigma), rr = sigma * 3, B = 7;
+      const i0 = Math.max(0, Math.floor((ptr.tx - rr - FX0) / CELL)), i1 = Math.min(NX - 1, Math.ceil((ptr.tx + rr - FX0) / CELL));
+      const j0 = Math.max(0, Math.floor((ptr.ty - rr - FY0) / CELL)), j1 = Math.min(NY - 1, Math.ceil((ptr.ty + rr - FY0) / CELL));
+      for (let j = j0; j <= j1; j++) {
+        const dy = FY0 + (j + 0.5) * CELL - ptr.ty;
+        for (let i = i0; i <= i1; i++) {
+          const dx = FX0 + (i + 0.5) * CELL - ptr.tx;
+          const d = Math.hypot(dx, dy) || 1e-3;
+          const w = (B * Math.exp(-(dx * dx + dy * dy) * inv2)) / d;
+          const idx = (j * NX + i) * 2;
+          vel[idx] += dx * w;
+          vel[idx + 1] += dy * w;
+        }
+      }
+    };
     window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("pointerdown", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
 
     const updatePointer = (dt: number) => {
@@ -398,7 +418,7 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerdown", onMove);
+      window.removeEventListener("pointerdown", onDown);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();

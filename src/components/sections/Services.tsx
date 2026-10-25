@@ -9,13 +9,13 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import { applyImages, services } from "@/content/site";
 
 const LAST = services.length - 1;
-// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = blanco con nubes (texto en diferencia).
+// Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = cielo azul con nubes.
 const BG = [
   [11, 11, 13],
   [219, 232, 251],
-  [255, 255, 255],
+  [58, 109, 189],
 ];
-const DARK = [true, false, false];
+const DARK = [true, false, true];
 
 // Posición de las imágenes alrededor de "Apply" (en % del panel) y su parallax propio.
 const SLOTS = [
@@ -43,6 +43,7 @@ export function Services() {
   const scanLayer = useRef<HTMLDivElement>(null);
   const skyLayer = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLDivElement>(null);
+  const cloudLayer = useRef<HTMLDivElement>(null);
   const shots = useRef<(HTMLDivElement | null)[]>([]);
   const [sky, setSky] = useState(false);
   const [active, setActive] = useState(0);
@@ -65,7 +66,9 @@ export function Services() {
       const c = mix(BG[i], BG[i + 1], smooth(0.35, 0.65, x - i));
       if (bg.current) bg.current.style.backgroundColor = `rgb(${c.join(",")})`;
       if (scanLayer.current) scanLayer.current.style.opacity = String(0.6 * (1 - smooth(0.2, 0.5, x)));
-      if (skyLayer.current) skyLayer.current.style.opacity = String(smooth(1.3, 1.7, x));
+      const skyOn = String(smooth(1.3, 1.7, x));
+      if (skyLayer.current) skyLayer.current.style.opacity = skyOn;
+      if (cloudLayer.current) cloudLayer.current.style.opacity = skyOn;
       setSky(x > 1.2);
       // Apply: cada imagen entra creciendo desde su centro (con un leve rebote) y sale encogiéndose al pasar a Grow.
       shots.current.forEach((el, k) => {
@@ -82,10 +85,10 @@ export function Services() {
       gsap.to(track.current, {
         x: () => -dist(),
         ease: "none",
-        // El fondo vive dentro del recorrido (para que el texto de Grow pueda mezclarse en diferencia con las
-        // nubes) y se contrarresta para que parezca fijo.
+        // Las nubes viven dentro del recorrido (grupo aislado sin el cielo): así el texto de Grow, en modo
+        // diferencia, solo se invierte donde hay nube. Se contrarrestan para que parezcan fijas.
         onUpdate() {
-          if (bg.current) bg.current.style.transform = `translate3d(${-Number(gsap.getProperty(track.current, "x"))}px,0,0)`;
+          if (cloudLayer.current) cloudLayer.current.style.transform = `translate3d(${-Number(gsap.getProperty(track.current, "x"))}px,0,0)`;
           paint(this.progress());
         },
         scrollTrigger: {
@@ -106,7 +109,7 @@ export function Services() {
   }, [reduced]);
 
   const dark = DARK[active];
-  const brand = active === LAST; // sobre el cielo el acento es la tinta
+  const brand = active === LAST; // sobre el cielo azul el acento es blanco
 
   return (
     <section ref={section} id="servicios" aria-labelledby="servicios-h" className="relative overflow-hidden">
@@ -115,13 +118,25 @@ export function Services() {
       </h2>
 
       {!reduced && (
+        <div ref={bg} aria-hidden className="absolute inset-0" style={{ backgroundColor: "rgb(11,11,13)" }}>
+          <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.6 }}>
+            {near && (
+              <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
+            )}
+          </div>
+          {/* Cielo de Grow (Magritte): azul profundo arriba, más claro abajo, sin llegar al blanco. */}
+          <div ref={skyLayer} className="absolute inset-0 bg-[linear-gradient(180deg,#2a5aa8_0%,#3a6dbd_60%,#5a8cd0_100%)]" style={{ opacity: 0 }} />
+        </div>
+      )}
+
+      {!reduced && (
         <div ref={ruler} aria-hidden className={`absolute inset-x-[var(--gutter)] top-8 z-10 transition-[color,opacity] duration-700 ${dark ? "text-cloud" : "text-ink"}`} style={{ opacity: 0 }}>
           <div className={`relative h-0.5 ${dark ? "bg-cloud/25" : "bg-ink/20"}`}>
-            <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${brand ? "bg-ink" : dark ? "bg-sky" : "bg-cobalt"}`} />
+            <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${brand ? "bg-cloud" : dark ? "bg-sky" : "bg-cobalt"}`} />
           </div>
           <div className="mt-3 flex justify-between text-sm font-medium uppercase tracking-wide">
             {services.map((s, i) => (
-              <span key={s.key} className={i === active ? (brand ? "underline underline-offset-4" : dark ? "text-sky" : "text-cobalt") : "opacity-70"}>
+              <span key={s.key} className={i === active ? (brand ? "underline underline-offset-4" : dark ? "text-sky" : "text-cobalt") : brand ? "" : "opacity-70"}>
                 {s.key}
               </span>
             ))}
@@ -131,26 +146,19 @@ export function Services() {
 
       <div ref={track} className={`relative ${reduced ? "flex flex-col" : "flex h-svh w-max"}`}>
         {!reduced && (
-          <div ref={bg} aria-hidden className="absolute left-0 top-0 h-svh w-screen" style={{ backgroundColor: "rgb(11,11,13)" }}>
-            <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.6 }}>
-              {near && (
-                <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
-              )}
-            </div>
-            <div ref={skyLayer} className="absolute inset-0 bg-cloud" style={{ opacity: 0 }}>
-              {near && <CloudSky active={sky} lit="#e9f0fa" shade="#7fa6dc" />}
-            </div>
+          <div ref={cloudLayer} aria-hidden className="absolute left-0 top-0 h-svh w-screen" style={{ opacity: 0 }}>
+            {near && <CloudSky active={sky} />}
           </div>
         )}
         {services.map((s, i) => {
           const on = reduced || i === active;
           const isDark = DARK[i];
-          // Grow: texto blanco en modo diferencia → negro sobre el blanco, invertido donde pasa una nube.
+          // Grow: texto blanco en modo diferencia dentro del grupo de las nubes → blanco sobre el cielo, invertido donde pasa una nube.
           const blend = i === LAST && !reduced ? "text-cloud mix-blend-difference" : "";
           return (
             <div
               key={s.key}
-              className={`relative flex shrink-0 flex-col items-center justify-center px-6 text-center ${reduced ? "min-h-[70svh] w-full" : "h-svh w-screen"} ${isDark ? "text-cloud" : "text-ink"}`}
+              className={`relative flex shrink-0 flex-col items-center justify-center px-6 text-center ${reduced ? "min-h-[70svh] w-full" : "h-svh w-screen"} ${isDark ? "text-cloud" : "text-ink"} ${i === LAST && !reduced ? "[@media(hover:hover)]:cursor-grab active:cursor-grabbing" : ""}`}
               style={reduced ? { backgroundColor: `rgb(${BG[i].join(",")})` } : undefined}
             >
               {i === 1 && !reduced &&
