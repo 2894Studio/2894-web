@@ -67,7 +67,7 @@ export const clients = [
 
 export const reel = {
   youtubeId: "EdIrzwME-do",
-  poster: "https://i.ytimg.com/vi/EdIrzwME-do/maxresdefault.jpg",
+  poster: "/poster.jpg", // copia local del fotograma de YouTube (disponible sin conexión)
 };
 
 // Imágenes que aparecen alrededor de "Apply" durante el recorrido horizontal.

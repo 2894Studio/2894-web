@@ -6,8 +6,13 @@ const staticExport = process.env.STATIC_EXPORT === "1";
 
 const nextConfig: NextConfig = {
   ...(staticExport
-    ? { output: "export", trailingSlash: true, images: { unoptimized: true }, ...(process.env.REL_ASSETS === "1" ? { assetPrefix: "." } : {}) }
+    ? { output: "export", trailingSlash: true, ...(process.env.REL_ASSETS === "1" ? { assetPrefix: "." } : {}) }
     : { cacheComponents: true, partialPrefetching: true }),
+  // Imágenes servidas tal cual (ya optimizadas en public/): URLs fijas que el service worker puede guardar sin conexión.
+  images: { unoptimized: true },
+  async headers() {
+    return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];
+  },
   turbopack: {
     rules: {
       "*.css": {
