@@ -158,7 +158,7 @@ export function Services() {
           return (
             <div
               key={s.key}
-              className={`relative flex shrink-0 flex-col items-center justify-center px-6 text-center ${reduced ? "min-h-[70svh] w-full" : "h-svh w-screen"} ${isDark ? "text-cloud" : "text-ink"} ${i === LAST && !reduced ? "[@media(hover:hover)]:cursor-grab active:cursor-grabbing" : ""}`}
+              className={`relative flex shrink-0 flex-col items-center justify-center px-6 text-center ${reduced ? "min-h-[70svh] w-full" : "h-svh w-screen"} ${isDark ? "text-cloud" : "text-ink"}`}
               style={reduced ? { backgroundColor: `rgb(${BG[i].join(",")})` } : undefined}
             >
               {i === 1 && !reduced &&

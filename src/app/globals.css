@@ -194,3 +194,16 @@ html.lenis, html.lenis body { height: auto; }
   padding: 0.08em 0.04em 0.14em;
   margin: -0.08em -0.04em -0.14em;
 }
+
+/* Cursor de la marca: flecha y mano en azul primario, 2,5× el tamaño habitual (solo con ratón). */
+:root {
+  --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='48' viewBox='0 0 12 19'%3E%3Cpath d='M1 1v14.5l3.6-3.3L7 17.8l2.2-.9-2.3-5.5h4.6z' fill='%230A46FF' stroke='%23fff' stroke-width='.9' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, auto;
+  --cursor-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='55' viewBox='0 0 24 30'%3E%3Cpath d='M9.5 1.5c1 0 1.8.8 1.8 1.8V12h.4V9.8c0-1 .8-1.7 1.7-1.7s1.7.8 1.7 1.7v2.7h.4v-1.6c0-.9.8-1.7 1.7-1.7s1.7.8 1.7 1.7v1.9h.4v-.9c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6V20c0 4.4-3.2 8-7.6 8h-2.4c-2.5 0-4.4-1.2-5.8-3.2L3 18.6c-.6-.9-.4-2 .4-2.6.8-.6 1.9-.5 2.5.3l1.8 2.3V3.3c0-1 .8-1.8 1.8-1.8z' fill='%230A46FF' stroke='%23fff' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E") 17 3, pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  html, html * { cursor: var(--cursor-arrow) !important; }
+  a, a *, button, button *, summary, summary *, [role="button"], label[for], select { cursor: var(--cursor-hand) !important; }
+}
+
+/* Icono de pausa/reproducción del showreel: aparece y se desvanece. */
+@keyframes hero-flash { 0% { opacity: 1; transform: scale(.9); } 30% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.15); } }

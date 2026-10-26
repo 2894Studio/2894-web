@@ -174,7 +174,7 @@ export function ProjectSphere() {
           setInside(false);
           setHovered(null);
         }}
-        className="relative mx-auto aspect-square w-[min(94vw,80svh)] cursor-grab touch-pan-y select-none active:cursor-grabbing [perspective:1600px] [transform-style:preserve-3d]"
+        className="relative mx-auto aspect-square w-[min(94vw,80svh)] touch-pan-y select-none [perspective:1600px] [transform-style:preserve-3d]"
         aria-label="Esfera de proyectos"
       >
         {projects.map((p, i) => (

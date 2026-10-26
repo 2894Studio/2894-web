@@ -7,10 +7,28 @@ import { reel, studio } from "@/content/site";
 
 const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
 
+const Speaker = ({ muted }: { muted: boolean }) => (
+  <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
+    {muted ? <path d="m16 9.5 5 5m0-5-5 5" /> : <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />}
+  </svg>
+);
+
+const PlayPause = ({ playing }: { playing: boolean }) => (
+  <svg aria-hidden viewBox="0 0 24 24" className="size-8" fill="currentColor">
+    {playing ? <path d="M7 5h3.5v14H7zm6.5 0H17v14h-3.5z" /> : <path d="M8 5.2v13.6a.6.6 0 0 0 .9.5l10.6-6.8a.6.6 0 0 0 0-1L8.9 4.7a.6.6 0 0 0-.9.5z" />}
+  </svg>
+);
+
 // Hero = showreel a pantalla completa. Con el scroll se enmarca con bordes redondeados (referencia: cm.studio).
+// Clic sobre el vídeo: pausa/reproduce. Botón de sonido: empieza silenciado (el navegador lo exige para el autoplay).
 export function Hero() {
   const reduced = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const [flash, setFlash] = useState(0);
+  const soundAt = useRef(0); // instante del último cambio de sonido: ignora avisos de YouTube aún sin aplicar
   const header = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const player = useRef<HTMLIFrameElement>(null);
@@ -22,12 +40,38 @@ export function Hero() {
       if (e.source !== player.current?.contentWindow || typeof e.data !== "string") return;
       try {
         const d = JSON.parse(e.data);
-        if (d.event === "onStateChange" ? d.info === 1 : d.info?.playerState === 1) setLoaded(true);
+        const state = d.event === "onStateChange" ? d.info : d.info?.playerState;
+        if (state === 1) {
+          setLoaded(true);
+          setPlaying(true);
+        } else if (state === 2) setPlaying(false);
+        if (typeof d.info?.muted === "boolean" && performance.now() - soundAt.current > 1500) setMuted(d.info.muted);
       } catch {}
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
+
+  // Órdenes a la API del reproductor de YouTube (iframe con enablejsapi=1).
+  const send = (func: string, args: unknown[] = []) =>
+    player.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "*");
+  const togglePlay = () => {
+    send(playing ? "pauseVideo" : "playVideo");
+    setPlaying(!playing);
+    setFlash((n) => n + 1);
+  };
+  const toggleSound = () => {
+    soundAt.current = performance.now();
+    if (muted) {
+      send("unMute");
+      send("setVolume", [100]);
+      if (!playing) {
+        send("playVideo");
+        setPlaying(true);
+      }
+    } else send("mute");
+    setMuted(!muted);
+  };
 
   useEffect(() => {
     if (reduced || !header.current || !frame.current) return;
@@ -65,7 +109,34 @@ export function Hero() {
         )}
         </div>
         <div className="absolute inset-0 bg-ink/15" />
-        <h1 className="absolute left-5 top-5 text-lg font-bold text-cloud sm:left-7 sm:top-7">
+        {!reduced && (
+          <>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? "Pausar showreel" : "Reproducir showreel"}
+              className="absolute inset-0 z-[1] flex items-center justify-center text-cloud focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cloud"
+            >
+              {/* Icono central: aparece un instante al pulsar y se queda visible mientras está en pausa. */}
+              <span
+                key={flash}
+                className={`flex size-20 items-center justify-center rounded-full bg-ink/45 backdrop-blur-md transition-opacity duration-700 ${playing ? (flash ? "animate-[hero-flash_.9s_ease-out_forwards]" : "opacity-0") : "opacity-100"}`}
+              >
+                <PlayPause playing={!playing} />
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={muted ? "Activar sonido" : "Silenciar"}
+              aria-pressed={!muted}
+              className="spring absolute right-4 top-4 z-[2] flex size-11 items-center justify-center rounded-full bg-ink/45 text-cloud backdrop-blur-md hover:bg-ink/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud sm:right-6 sm:top-6"
+            >
+              <Speaker muted={muted} />
+            </button>
+          </>
+        )}
+        <h1 className="pointer-events-none absolute left-5 top-5 z-[2] text-lg font-bold text-cloud sm:left-7 sm:top-7">
           2894_
           <span className="sr-only"> Studio: {studio.headline}</span>
         </h1>
