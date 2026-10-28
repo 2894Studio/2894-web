@@ -54,12 +54,7 @@ export function Services() {
     if (reduced || !section.current) return;
     const io = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: "100% 0px" });
     io.observe(section.current);
-    // Respaldo: si el observador no llega a avisar, se monta igualmente tras la carga (ambos se pausan fuera de pantalla).
-    const t = window.setTimeout(() => setNear(true), 4000);
-    return () => {
-      io.disconnect();
-      window.clearTimeout(t);
-    };
+    return () => io.disconnect();
   }, [reduced]);
 
   useEffect(() => {
