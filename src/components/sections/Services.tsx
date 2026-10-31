@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CloudSky } from "@/components/CloudSky";
+import { CloudSky, SKY_DEFAULTS, type SkyControls } from "@/components/CloudSky";
+import { getLenis } from "@/lib/lenis";
 import GridScan from "@/components/GridScan";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
@@ -11,11 +12,11 @@ import { applyImages, services } from "@/content/site";
 const LAST = services.length - 1;
 // Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = cielo azul con nubes.
 const BG = [
-  [11, 11, 13],
+  [247, 248, 250],
   [219, 232, 251],
   [58, 109, 189],
 ];
-const DARK = [true, false, true];
+const DARK = [false, false, true];
 
 // Posición de las imágenes alrededor de "Apply" (en % del panel) y su parallax propio.
 const SLOTS = [
@@ -33,6 +34,13 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+// Cielos para el panel de Grow (degradado de arriba abajo; el blanco del texto mantiene contraste en los tres).
+const SKIES = [
+  { key: "magritte", label: "Magritte", css: "linear-gradient(180deg,#2a5aa8 0%,#3a6dbd 60%,#5a8cd0 100%)" },
+  { key: "atardecer", label: "Atardecer", css: "linear-gradient(180deg,#24305e 0%,#7a4f8a 55%,#c9736a 100%)" },
+  { key: "noche", label: "Noche", css: "linear-gradient(180deg,#05081a 0%,#101d4a 60%,#1f3270 100%)" },
+];
+
 // Discover. Apply. Grow. como recorrido horizontal: el scroll vertical pasa de una palabra a otra y cambia el mundo de fondo.
 export function Services() {
   const reduced = useReducedMotion();
@@ -48,6 +56,24 @@ export function Services() {
   const [sky, setSky] = useState(false);
   const [active, setActive] = useState(0);
   const [near, setNear] = useState(false);
+  const skyControls = useRef<SkyControls>({ ...SKY_DEFAULTS });
+  const [ctrl, setCtrl] = useState<SkyControls>({ ...SKY_DEFAULTS });
+  const [skyKey, setSkyKey] = useState(SKIES[0].key);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const pinST = useRef<ScrollTrigger | null>(null);
+  const setControl = (k: keyof SkyControls, v: number) => {
+    skyControls.current = { ...skyControls.current, [k]: v };
+    setCtrl(skyControls.current);
+  };
+  // Las etiquetas de la barra de progreso llevan a cada palabra.
+  const goTo = (i: number) => {
+    const st = pinST.current;
+    if (!st) return;
+    const y = st.start + ((st.end - st.start) * i) / LAST;
+    const lenis = getLenis();
+    if (lenis) lenis.scrollTo(y, { duration: 1.2 });
+    else window.scrollTo(0, y);
+  };
 
   // El escáner (WebGL) solo se monta cuando la sección se acerca.
   useEffect(() => {
@@ -65,7 +91,7 @@ export function Services() {
       const i = Math.min(LAST - 1, Math.floor(x));
       const c = mix(BG[i], BG[i + 1], smooth(0.35, 0.65, x - i));
       if (bg.current) bg.current.style.backgroundColor = `rgb(${c.join(",")})`;
-      if (scanLayer.current) scanLayer.current.style.opacity = String(0.6 * (1 - smooth(0.2, 0.5, x)));
+      if (scanLayer.current) scanLayer.current.style.opacity = String(0.9 * (1 - smooth(0.2, 0.5, x)));
       const skyOn = String(smooth(1.3, 1.7, x));
       if (skyLayer.current) skyLayer.current.style.opacity = skyOn;
       if (cloudLayer.current) cloudLayer.current.style.opacity = skyOn;
@@ -82,7 +108,7 @@ export function Services() {
       setActive(Math.min(LAST, Math.round(x)));
     };
     const ctx = gsap.context(() => {
-      gsap.to(track.current, {
+      const tween = gsap.to(track.current, {
         x: () => -dist(),
         ease: "none",
         // Las nubes viven dentro del recorrido (grupo aislado sin el cielo): así el texto de Grow, en modo
@@ -99,9 +125,14 @@ export function Services() {
           scrub: 0.8,
           invalidateOnRefresh: true,
           // La barra de progreso solo aparece con la sección ya fijada en pantalla.
-          onToggle: (self) => ruler.current && (ruler.current.style.opacity = self.isActive ? "1" : "0"),
+          onToggle: (self) => {
+            if (!ruler.current) return;
+            ruler.current.style.opacity = self.isActive ? "1" : "0";
+            ruler.current.style.pointerEvents = self.isActive ? "auto" : "none";
+          },
         },
       });
+      pinST.current = tween.scrollTrigger ?? null;
     }, section);
     paint(0);
     ScrollTrigger.refresh();
@@ -119,27 +150,80 @@ export function Services() {
 
       {!reduced && (
         <div ref={bg} aria-hidden className="absolute inset-0" style={{ backgroundColor: "rgb(11,11,13)" }}>
-          <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.6 }}>
+          <div ref={scanLayer} className="absolute inset-0" style={{ opacity: 0.9 }}>
             {near && (
-              <GridScan linesColor="#4d4757" scanColor="#7dd3fc" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
+              <GridScan lightMode linesColor="#86a9ec" scanColor="#0a46ff" cells={8} depth={3} scanDuration={2.4} scanDelay={1.6} clickEffect="ping" dpr={1.5} />
             )}
           </div>
           {/* Cielo de Grow (Magritte): azul profundo arriba, más claro abajo, sin llegar al blanco. */}
-          <div ref={skyLayer} className="absolute inset-0 bg-[linear-gradient(180deg,#2a5aa8_0%,#3a6dbd_60%,#5a8cd0_100%)]" style={{ opacity: 0 }} />
+          <div ref={skyLayer} className="absolute inset-0 transition-[background] duration-700" style={{ opacity: 0, background: SKIES.find((k) => k.key === skyKey)?.css }} />
         </div>
       )}
 
       {!reduced && (
-        <div ref={ruler} aria-hidden className={`absolute inset-x-[var(--gutter)] top-8 z-10 transition-[color,opacity] duration-700 ${dark ? "text-cloud" : "text-ink"}`} style={{ opacity: 0 }}>
+        <nav ref={ruler} aria-label="Discover, Apply, Grow" className={`absolute inset-x-[var(--gutter)] top-8 z-30 transition-[color,opacity] duration-700 ${dark ? "text-cloud" : "text-ink"}`} style={{ opacity: 0, pointerEvents: "none" }}>
           <div className={`relative h-0.5 ${dark ? "bg-cloud/25" : "bg-ink/20"}`}>
             <div ref={fill} style={{ transform: "scaleX(0)" }} className={`absolute inset-0 origin-left ${brand ? "bg-cloud" : dark ? "bg-sky" : "bg-cobalt"}`} />
           </div>
           <div className="mt-3 flex justify-between text-sm font-medium uppercase tracking-wide">
             {services.map((s, i) => (
-              <span key={s.key} className={i === active ? (brand ? "underline underline-offset-4" : dark ? "text-sky" : "text-cobalt") : brand ? "" : "opacity-70"}>
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => goTo(i)}
+                aria-current={i === active ? "step" : undefined}
+                className={`-mx-2 min-h-11 px-2 uppercase hover:underline hover:underline-offset-4 ${i === active ? (brand ? "underline underline-offset-4" : dark ? "text-sky" : "text-cobalt") : brand ? "" : "opacity-70"}`}
+              >
                 {s.key}
-              </span>
+              </button>
             ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Grow: panel para jugar con el cielo, como en un laboratorio. */}
+      {!reduced && active === LAST && (
+        <div className="absolute bottom-[calc(96px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[min(300px,calc(100vw-32px))] text-ink">
+          <button
+            type="button"
+            aria-expanded={panelOpen}
+            aria-controls="sky-panel"
+            onClick={() => setPanelOpen((o) => !o)}
+            className="spring ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-sm font-medium backdrop-blur-lg"
+          >
+            {panelOpen ? "Cerrar" : "Ajustar el cielo"}
+          </button>
+          <div id="sky-panel" hidden={!panelOpen} className="mt-2 space-y-3 rounded-3xl border border-white/50 bg-white/75 p-4 text-sm backdrop-blur-lg">
+            {([
+              ["count", "Nubes", 1, 7, 1],
+              ["size", "Tamaño", 0.6, 1.6, 0.05],
+              ["wind", "Viento", 0, 4, 0.1],
+              ["softness", "Bordes", 0.3, 1.8, 0.05],
+            ] as const).map(([k, label, min, max, step]) => (
+              <label key={k} className="grid grid-cols-[5.5rem_1fr_2.5rem] items-center gap-2">
+                <span>{label}</span>
+                <input type="range" min={min} max={max} step={step} value={ctrl[k]} onChange={(e) => setControl(k, Number(e.target.value))} className="accent-cobalt" />
+                <span className="text-right tabular-nums">{k === "count" ? ctrl[k] : ctrl[k].toFixed(1)}</span>
+              </label>
+            ))}
+            <div role="group" aria-label="Color del cielo" className="flex flex-wrap gap-1">
+              {SKIES.map((k) => (
+                <button key={k.key} type="button" aria-pressed={skyKey === k.key} onClick={() => setSkyKey(k.key)} className={`min-h-11 rounded-full px-3 ${skyKey === k.key ? "bg-ink text-cloud" : "bg-ink/5"}`}>
+                  {k.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                skyControls.current = { ...SKY_DEFAULTS };
+                setCtrl(skyControls.current);
+                setSkyKey(SKIES[0].key);
+              }}
+              className="min-h-11 font-medium underline underline-offset-4"
+            >
+              Restablecer
+            </button>
           </div>
         </div>
       )}
@@ -147,7 +231,7 @@ export function Services() {
       <div ref={track} className={`relative ${reduced ? "flex flex-col" : "flex h-svh w-max"}`}>
         {!reduced && (
           <div ref={cloudLayer} aria-hidden className="absolute left-0 top-0 h-svh w-screen" style={{ opacity: 0 }}>
-            {near && <CloudSky active={sky} />}
+            {near && <CloudSky active={sky} controls={skyControls} />}
           </div>
         )}
         {services.map((s, i) => {

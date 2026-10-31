@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 
 // Nubes volumétricas interactivas sobre un cielo de Magritte.
 // Lógica del laboratorio "Nube interactiva 2894_": raymarching de elipsoides + FBM, luz con lightMarch
@@ -31,6 +31,8 @@ uniform vec4 uFieldRect;
 uniform vec4 uClouds[${COUNT}];
 uniform vec3 uLit;
 uniform vec3 uShade;
+uniform int uCount;
+uniform float uSoft;
 
 const vec3 LIGHT = vec3(-0.509, 0.694, 0.509);
 const mat3 M = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
@@ -92,6 +94,7 @@ float density(vec3 p, int oct){
   q.xy -= u;
   float dens = 0.0;
   for(int i = 0; i < ${COUNT}; i++){
+    if(i >= uCount) break;
     vec4 c = uClouds[i];
     vec3 l = (q - c.xyz) / c.w;
     if(dot(l, l) > 6.5) continue;      // fuera de la caja de esta nube
@@ -99,7 +102,7 @@ float density(vec3 p, int oct){
     if(d > 0.5) continue;
     vec3 w = vec3(uPhase * 0.05, -uPhase * 0.02, uPhase * 0.04);
     float n = fbm(l * 1.45 + w + float(i) * 3.1, oct);
-    d += (n - 0.5) * 0.95;
+    d += (n - 0.5) * 0.95 * uSoft;
     dens = max(dens, clamp(-d * 2.6, 0.0, 1.0));
   }
   return dens;
@@ -155,7 +158,21 @@ const CLOUDS: [number, number, number, number][] = [
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
 // lit/shade: color de la cara iluminada y de la sombra (por defecto, las nubes de Magritte).
-export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeHex = "#9db4d4" }: { active?: boolean; lit?: string; shade?: string }) {
+// Controles del cielo (Grow): cantidad de nubes, tamaño, viento y suavidad de los bordes.
+export type SkyControls = { count: number; size: number; wind: number; softness: number };
+export const SKY_DEFAULTS: SkyControls = { count: 7, size: 1, wind: 1, softness: 1 };
+
+export function CloudSky({
+  active = true,
+  lit: litHex = "#fefefe",
+  shade: shadeHex = "#9db4d4",
+  controls: controlsRef,
+}: {
+  active?: boolean;
+  lit?: string;
+  shade?: string;
+  controls?: MutableRefObject<SkyControls>;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   useEffect(() => {
@@ -204,7 +221,7 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
     const U = (n: string) => gl.getUniformLocation(prog, n);
     const L = {
       res: U("uRes"), scale: U("uScale"), camY: U("uCamY"), phase: U("uPhase"), steps: U("uSteps"),
-      field: U("uField"), rect: U("uFieldRect"), clouds: U("uClouds"), lit: U("uLit"), shade: U("uShade"),
+      field: U("uField"), rect: U("uFieldRect"), clouds: U("uClouds"), lit: U("uLit"), shade: U("uShade"), count: U("uCount"), soft: U("uSoft"),
     };
 
     // Campo de desplazamiento (muelle + onda), como en el laboratorio.
@@ -362,6 +379,7 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
     const lit = hex(litHex);
     const shade = hex(shadeHex);
     const clouds = new Float32Array(COUNT * 4);
+    const drift = new Float32Array(COUNT);
     let last = performance.now(), phase = 0, ema = 1 / 60, frames = 0, nextAdapt = 0;
     let raf = 0;
     const frame = (now: number) => {
@@ -375,9 +393,11 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
       simulate(dt);
       // las nubes derivan despacio con el viento y vuelven a entrar por el otro lado
       CLOUDS.forEach(([x, y, z, s], i) => {
-        let cx = x + phase * 0.03 * (1 + (i % 3) * 0.3);
+        const c = controlsRef?.current;
+        drift[i] += dt * 0.03 * (c?.wind ?? 1) * (1 + (i % 3) * 0.3);
+        let cx = x + drift[i];
         cx = ((((cx + 5) % 10) + 10) % 10) - 5;
-        clouds.set([cx, y, z, s], i * 4);
+        clouds.set([cx, y, z, s * (c?.size ?? 1)], i * 4);
       });
       gl.viewport(0, 0, W, H);
       gl.activeTexture(gl.TEXTURE0);
@@ -393,6 +413,8 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
       gl.uniform4fv(L.clouds, clouds);
       gl.uniform3fv(L.lit, lit);
       gl.uniform3fv(L.shade, shade);
+      gl.uniform1i(L.count, Math.round(controlsRef?.current.count ?? COUNT));
+      gl.uniform1f(L.soft, controlsRef?.current.softness ?? 1);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -423,7 +445,7 @@ export function CloudSky({ active = true, lit: litHex = "#fefefe", shade: shadeH
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };
-  }, [litHex, shadeHex]);
+  }, [litHex, shadeHex, controlsRef]);
 
   return (
     <div ref={host} aria-hidden className="group/sky absolute inset-0">
