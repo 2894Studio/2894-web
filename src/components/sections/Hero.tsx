@@ -3,33 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { Logo } from "@/components/Logo";
+import { registerReel, setReel } from "@/lib/reel";
 import { reel, studio } from "@/content/site";
 
 const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
 
-const Speaker = ({ muted }: { muted: boolean }) => (
-  <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
-    {muted ? <path d="m16 9.5 5 5m0-5-5 5" /> : <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />}
-  </svg>
-);
-
-const PlayPause = ({ playing }: { playing: boolean }) => (
-  <svg aria-hidden viewBox="0 0 24 24" className="size-8" fill="currentColor">
-    {playing ? <path d="M7 5h3.5v14H7zm6.5 0H17v14h-3.5z" /> : <path d="M8 5.2v13.6a.6.6 0 0 0 .9.5l10.6-6.8a.6.6 0 0 0 0-1L8.9 4.7a.6.6 0 0 0-.9.5z" />}
-  </svg>
-);
-
 // Hero = showreel a pantalla completa. Con el scroll se enmarca con bordes redondeados (referencia: cm.studio).
-// Clic sobre el vídeo: pausa/reproduce. Botón de sonido: empieza silenciado (el navegador lo exige para el autoplay).
+// Sin botones sobre el vídeo: clic en él pausa/reproduce y el resto de controles los lleva la barra inferior
+// (src/lib/reel.ts). Empieza silenciado (el navegador lo exige para el autoplay).
 export function Hero() {
   const reduced = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
-  const [playing, setPlaying] = useState(true);
-  const [muted, setMuted] = useState(true);
-  const [flash, setFlash] = useState(0);
   const soundAt = useRef(0); // instante del último cambio de sonido: ignora avisos de YouTube aún sin aplicar
+  const playingRef = useRef(true);
+  const mutedRef = useRef(true);
   const header = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const player = useRef<HTMLIFrameElement>(null);
@@ -44,35 +31,60 @@ export function Hero() {
         const state = d.event === "onStateChange" ? d.info : d.info?.playerState;
         if (state === 1) {
           setLoaded(true);
-          setPlaying(true);
-        } else if (state === 2) setPlaying(false);
-        if (typeof d.info?.muted === "boolean" && performance.now() - soundAt.current > 1500) setMuted(d.info.muted);
+          playingRef.current = true;
+          setReel({ playing: true });
+        } else if (state === 2) {
+          playingRef.current = false;
+          setReel({ playing: false });
+        }
+        if (typeof d.info?.muted === "boolean" && performance.now() - soundAt.current > 1500) {
+          mutedRef.current = d.info.muted;
+          setReel({ muted: d.info.muted });
+        }
+        if (typeof d.info?.currentTime === "number") setReel({ time: d.info.currentTime });
+        if (typeof d.info?.duration === "number" && d.info.duration > 0) setReel({ duration: d.info.duration });
       } catch {}
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  // Órdenes a la API del reproductor de YouTube (iframe con enablejsapi=1).
+  // Órdenes a la API del reproductor de YouTube (iframe con enablejsapi=1), expuestas a la barra.
   const send = (func: string, args: unknown[] = []) =>
     player.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "*");
   const togglePlay = () => {
-    send(playing ? "pauseVideo" : "playVideo");
-    setPlaying(!playing);
-    setFlash((n) => n + 1);
+    send(playingRef.current ? "pauseVideo" : "playVideo");
+    playingRef.current = !playingRef.current;
+    setReel({ playing: playingRef.current });
   };
-  const toggleSound = () => {
-    soundAt.current = performance.now();
-    if (muted) {
-      send("unMute");
-      send("setVolume", [100]);
-      if (!playing) {
-        send("playVideo");
-        setPlaying(true);
-      }
-    } else send("mute");
-    setMuted(!muted);
-  };
+  useEffect(() => {
+    registerReel({
+      toggle: togglePlay,
+      toggleSound: () => {
+        soundAt.current = performance.now();
+        if (mutedRef.current) {
+          send("unMute");
+          send("setVolume", [100]);
+          if (!playingRef.current) togglePlay();
+        } else send("mute");
+        mutedRef.current = !mutedRef.current;
+        setReel({ muted: mutedRef.current });
+      },
+      seek: (t) => {
+        send("seekTo", [t, true]);
+        setReel({ time: t });
+      },
+    });
+  });
+
+  // La barra es reproductor mientras el showreel ocupa la pantalla.
+  useEffect(() => {
+    const el = header.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setReel({ active: e.intersectionRatio > 0.45 }), { threshold: [0, 0.45, 1] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     if (reduced || !header.current || !frame.current) return;
@@ -110,37 +122,9 @@ export function Hero() {
         )}
         </div>
         <div className="absolute inset-0 bg-ink/15" />
-        {!reduced && (
-          <>
-            <button
-              type="button"
-              onClick={togglePlay}
-              aria-label={playing ? "Pausar showreel" : "Reproducir showreel"}
-              className="absolute inset-0 z-[1] flex items-center justify-center text-cloud focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cloud"
-            >
-              {/* Icono central: aparece un instante al pulsar y se queda visible mientras está en pausa. */}
-              <span
-                key={flash}
-                className={`flex size-20 items-center justify-center rounded-full bg-ink/45 backdrop-blur-md transition-opacity duration-700 ${playing ? (flash ? "animate-[hero-flash_.9s_ease-out_forwards]" : "opacity-0") : "opacity-100"}`}
-              >
-                <PlayPause playing={!playing} />
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleSound}
-              aria-label={muted ? "Activar sonido" : "Silenciar"}
-              aria-pressed={!muted}
-              className="spring absolute right-4 top-4 z-[2] flex size-11 items-center justify-center rounded-full bg-ink/45 text-cloud backdrop-blur-md hover:bg-ink/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cloud sm:right-6 sm:top-6"
-            >
-              <Speaker muted={muted} />
-            </button>
-          </>
-        )}
-        <h1 className="pointer-events-none absolute left-5 top-5 z-[2] text-lg font-bold text-cloud sm:left-7 sm:top-7">
-          <Logo />
-          <span className="sr-only"> Studio: {studio.headline}</span>
-        </h1>
+        {/* Sin botones sobre el vídeo: un clic en él pausa/reproduce (los controles accesibles están en la barra). */}
+        {!reduced && <div aria-hidden onClick={togglePlay} className="absolute inset-0 z-[1]" />}
+        <h1 className="sr-only">2894_ Studio: {studio.headline}</h1>
       </div>
     </header>
   );

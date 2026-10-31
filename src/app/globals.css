@@ -205,8 +205,13 @@ html.lenis, html.lenis body { height: auto; }
   a, a *, button, button *, summary, summary *, [role="button"], label[for], select { cursor: var(--cursor-hand) !important; }
 }
 
-/* Icono de pausa/reproducción del showreel: aparece y se desvanece. */
-@keyframes hero-flash { 0% { opacity: 1; transform: scale(.9); } 30% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.15); } }
+/* Barra de progreso del showreel en la barra inferior. */
+.reel-range { -webkit-appearance: none; appearance: none; height: 44px; background: transparent; cursor: pointer; }
+.reel-range::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: linear-gradient(to right, var(--deep-cobalt) var(--p, 0%), rgb(11 11 13 / .15) var(--p, 0%)); }
+.reel-range::-moz-range-track { height: 3px; border-radius: 3px; background: linear-gradient(to right, var(--deep-cobalt) var(--p, 0%), rgb(11 11 13 / .15) var(--p, 0%)); }
+.reel-range::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border-radius: 50%; background: var(--deep-cobalt); }
+.reel-range::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--deep-cobalt); }
+.reel-range:focus-visible { outline: 2px solid var(--deep-cobalt); outline-offset: 2px; border-radius: 4px; }
 
 /* Guion del logo: parpadeo suave y pausado para no robar atención (≈1,6 s por ciclo). */
 @keyframes blink { 0%, 62% { opacity: 1; } 70%, 92% { opacity: 0; } 100% { opacity: 1; } }
