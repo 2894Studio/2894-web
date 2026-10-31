@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
+import { Logo } from "@/components/Logo";
 import { reel, studio } from "@/content/site";
 
 const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
@@ -137,7 +138,7 @@ export function Hero() {
           </>
         )}
         <h1 className="pointer-events-none absolute left-5 top-5 z-[2] text-lg font-bold text-cloud sm:left-7 sm:top-7">
-          2894_
+          <Logo />
           <span className="sr-only"> Studio: {studio.headline}</span>
         </h1>
       </div>

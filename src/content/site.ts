@@ -11,6 +11,8 @@ export const studio = {
   twoBeat: ["Pensado para crear.", "Hecho para conectar."],
   facts: { location: "Madrid", founded: "2025", sector: "Consultoría y servicios a empresas" },
   phone: "+34 622 016 300",
+  whatsapp: "34622016300", // número en formato internacional para wa.me
+  whatsappText: "Hola 2894_, me gustaría hablar sobre un proyecto.",
   email: "hola@2894.studio", // TODO: confirmar email real
 };
 
