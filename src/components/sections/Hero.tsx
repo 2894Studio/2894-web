@@ -11,7 +11,7 @@ const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1
 // Hero = showreel a pantalla completa. Con el scroll se enmarca con bordes redondeados (referencia: cm.studio).
 // Sin botones sobre el vídeo: clic en él pausa/reproduce y el resto de controles los lleva la barra inferior
 // (src/lib/reel.ts). Empieza silenciado (el navegador lo exige para el autoplay).
-export function Hero() {
+export function Hero({ managed = false }: { managed?: boolean }) {
   const reduced = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
   const soundAt = useRef(0); // instante del último cambio de sonido: ignora avisos de YouTube aún sin aplicar
@@ -80,14 +80,14 @@ export function Hero() {
   // La barra es reproductor mientras el showreel ocupa la pantalla.
   useEffect(() => {
     const el = header.current;
-    if (!el) return;
+    if (!el || managed) return; // dentro de la apertura, el estado "activo" lo marca ella según el scroll
     const io = new IntersectionObserver(([e]) => setReel({ active: e.intersectionRatio > 0.45 }), { threshold: [0, 0.45, 1] });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [managed]);
 
   useEffect(() => {
-    if (reduced || !header.current || !frame.current) return;
+    if (reduced || managed || !header.current || !frame.current) return;
     const ctx = gsap.context(() => {
       // Se enmarca de forma marcada: margen hasta ~6vw, esquinas de 48px y el vídeo se aleja.
       const scrollTrigger = { trigger: header.current, start: "top top", end: "bottom top", scrub: 0.8 };
@@ -98,12 +98,12 @@ export function Hero() {
     });
     ScrollTrigger.refresh();
     return () => ctx.revert();
-  }, [reduced]);
+  }, [reduced, managed]);
 
   return (
-    <header ref={header} className="h-svh bg-cloud">
-      <div ref={frame} className="relative h-full overflow-hidden bg-ink [container-type:size]">
-        <div ref={media} className="absolute inset-0 [container-type:size]">
+    <header ref={header} data-reel-header className={managed ? "absolute inset-0" : "h-svh bg-cloud"}>
+      <div ref={frame} data-reel-frame className="relative h-full overflow-hidden bg-ink [container-type:size]">
+        <div ref={media} data-reel-media className="absolute inset-0 [container-type:size]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={reel.poster} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${loaded ? "opacity-0" : "opacity-100"}`} />
         {!reduced && (

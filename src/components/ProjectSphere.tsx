@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { Pill } from "@/components/Pill";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import { projects, type Project } from "@/content/site";
@@ -16,9 +16,20 @@ const POINTS = projects.map((_, i) => {
 const BASE_SPEED = 0.0024; // rad por frame
 
 // Esfera de proyectos: gira solo sobre el eje vertical y cada imagen mira siempre al frente.
-export function ProjectSphere() {
+// `controlled`: la aparición la hace otra pieza (la apertura, con las piezas del busto), así que las tarjetas
+// están colocadas desde el principio; `cardsRef` expone sus elementos para que esa pieza vuele hasta ellas.
+export function ProjectSphere({
+  controlled = false,
+  cardsRef,
+  sizeClass = "w-[min(94vw,80svh)]",
+}: {
+  controlled?: boolean;
+  cardsRef?: MutableRefObject<(HTMLDivElement | null)[]>;
+  sizeClass?: string;
+}) {
   const stage = useRef<HTMLDivElement>(null);
-  const cards = useRef<(HTMLDivElement | null)[]>([]);
+  const ownCards = useRef<(HTMLDivElement | null)[]>([]);
+  const cards = cardsRef ?? ownCards;
   const label = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<Project | null>(null);
   const [pinned, setPinned] = useState<Project | null>(null);
@@ -33,7 +44,7 @@ export function ProjectSphere() {
     const reduced = window.matchMedia(REDUCED).matches;
     const fine = window.matchMedia(FINE_POINTER).matches;
     const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, drag: false, lx: 0, frontIdx: 0 };
-    const ks = projects.map(() => ({ k: reduced ? 1 : 0 }));
+    const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
 
     const resize = () => {
       s.R = Math.min(el.clientWidth * 0.4, 420);
@@ -80,7 +91,7 @@ export function ProjectSphere() {
     raf = requestAnimationFrame(loop);
 
     // Aparición: las imágenes salen del centro con rebote.
-    let appeared = reduced;
+    let appeared = reduced || controlled;
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting && !appeared) {
@@ -147,7 +158,7 @@ export function ProjectSphere() {
       window.clearInterval(t);
       gsap.killTweensOf(ks);
     };
-  }, []);
+  }, [controlled, cards]);
 
   // Esc o clic fuera sueltan la reseña fijada.
   useEffect(() => {
@@ -174,7 +185,7 @@ export function ProjectSphere() {
           setInside(false);
           setHovered(null);
         }}
-        className="relative mx-auto aspect-square w-[min(94vw,80svh)] touch-pan-y select-none [perspective:1600px] [transform-style:preserve-3d]"
+        className={`relative mx-auto aspect-square ${sizeClass} touch-pan-y select-none [perspective:1600px] [transform-style:preserve-3d]`}
         aria-label="Esfera de proyectos"
       >
         {projects.map((p, i) => (

@@ -14,7 +14,7 @@ function useActiveSection() {
     const items = nav
       .map((n) => {
         const el = document.getElementById(n.href.slice(1));
-        return el ? { href: n.href, scene: el.closest<HTMLElement>("[data-scene]") ?? el } : null;
+        return el ? { href: n.href, scene: el.hasAttribute("data-anchor") ? el : (el.closest<HTMLElement>("[data-scene]") ?? el) } : null;
       })
       .filter((x) => x !== null);
     let raf = 0;

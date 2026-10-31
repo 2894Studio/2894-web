@@ -13,7 +13,8 @@ const targetOf = (hash: string) => {
   if (hash === "#contacto") return document.documentElement.scrollHeight - window.innerHeight;
   const el = document.getElementById(decodeURIComponent(hash.slice(1)));
   if (!el) return null;
-  const scene = el.closest<HTMLElement>("[data-scene]") ?? el;
+  // Un ancla marcada con data-anchor vale por sí misma (p. ej. un punto dentro de una escena larga).
+  const scene = el.hasAttribute("data-anchor") ? el : (el.closest<HTMLElement>("[data-scene]") ?? el);
   let y = 0;
   for (let n: HTMLElement | null = scene; n; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
   return y;
