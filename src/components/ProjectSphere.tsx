@@ -4,25 +4,28 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { Pill } from "@/components/Pill";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
-import { projects, type Project } from "@/content/site";
+import type { SphereItem } from "@/lib/projects";
 
-const N = projects.length;
+type Project = SphereItem;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 // Puntos de la esfera (espiral de Fibonacci): altura fija y ángulo alrededor del eje vertical.
-const POINTS = projects.map((_, i) => {
-  const y = 0.82 - (i / (N - 1)) * 1.64;
-  return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
-});
+const pointsFor = (n: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const y = n > 1 ? 0.82 - (i / (n - 1)) * 1.64 : 0;
+    return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
+  });
 const BASE_SPEED = 0.0024; // rad por frame
 
 // Esfera de proyectos: gira solo sobre el eje vertical y cada imagen mira siempre al frente.
 // `controlled`: la aparición la hace otra pieza (la apertura, con las piezas del busto), así que las tarjetas
 // están colocadas desde el principio; `cardsRef` expone sus elementos para que esa pieza vuele hasta ellas.
 export function ProjectSphere({
+  items: projects,
   controlled = false,
   cardsRef,
   sizeClass = "w-[min(94vw,80svh)]",
 }: {
+  items: SphereItem[];
   controlled?: boolean;
   cardsRef?: MutableRefObject<(HTMLDivElement | null)[]>;
   sizeClass?: string;
@@ -44,6 +47,7 @@ export function ProjectSphere({
     const reduced = window.matchMedia(REDUCED).matches;
     const fine = window.matchMedia(FINE_POINTER).matches;
     const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, drag: false, lx: 0, frontIdx: 0 };
+    const POINTS = pointsFor(projects.length);
     const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
 
     const resize = () => {
@@ -158,7 +162,7 @@ export function ProjectSphere({
       window.clearInterval(t);
       gsap.killTweensOf(ks);
     };
-  }, [controlled, cards]);
+  }, [controlled, cards, projects]);
 
   // Esc o clic fuera sueltan la reseña fijada.
   useEffect(() => {
@@ -217,7 +221,7 @@ export function ProjectSphere({
             <h3 className="mt-2 text-3xl font-light uppercase tracking-tight">{shown.title}</h3>
             <p className="mt-3 text-base">{shown.review}</p>
             <div className="mt-5 flex items-center gap-3">
-              <Pill href="#">Ver caso</Pill>
+              <Pill href={`/proyectos/${shown.id}`}>Ver caso</Pill>
               {pinned && (
                 <button type="button" onClick={() => setPinned(null)} className="spring min-h-11 rounded-full border border-ink px-4 text-sm font-medium uppercase hover:bg-ink hover:text-cloud">
                   Cerrar

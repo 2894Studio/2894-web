@@ -7,7 +7,12 @@ const staticExport = process.env.STATIC_EXPORT === "1";
 const nextConfig: NextConfig = {
   ...(staticExport
     ? { output: "export", trailingSlash: true, images: { unoptimized: true }, ...(process.env.REL_ASSETS === "1" ? { assetPrefix: "." } : {}) }
-    : { cacheComponents: true, partialPrefetching: true }),
+    : {
+        cacheComponents: true,
+        partialPrefetching: true,
+        // Imágenes de los proyectos subidas a Sanity.
+        images: { remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io" }] },
+      }),
   turbopack: {
     rules: {
       "*.css": {

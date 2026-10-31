@@ -9,7 +9,7 @@ import { Projects } from "@/components/sections/Projects";
 import { startFaceTracking, type FaceTracker } from "@/lib/faceTracking";
 import { setReel } from "@/lib/reel";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { projects } from "@/content/site";
+import type { SphereItem } from "@/lib/projects";
 
 // Apertura en una sola escena fijada y guiada por el scroll:
 // showreel → el vídeo queda dentro de "2894" → aparece el "_" → cielo con nubes y logo blanco →
@@ -19,7 +19,7 @@ const TRACK_SVH = 720;
 const PROJECTS_AT = 0.86; // progreso en el que la esfera ya está formada (destino del ancla #proyectos)
 const IMG_W = 1063, IMG_H = 1518;
 const BBOX = [0.206, 0.108, 0.752, 0.882]; // figura dentro del PNG del busto
-const COLS = 2, ROWS = 5;
+const COLS = 2;
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const seg = (p: number, a: number, b: number) => clamp((p - a) / (b - a), 0, 1);
@@ -39,13 +39,13 @@ const Wordmark = ({ underscore }: { underscore: React.Ref<HTMLSpanElement> }) =>
   </span>
 );
 
-export function Intro() {
+export function Intro({ items }: { items: SphereItem[] }) {
   const reduced = useReducedMotion();
-  if (reduced) return <StaticIntro />;
-  return <ScrollIntro />;
+  if (reduced) return <StaticIntro items={items} />;
+  return <ScrollIntro items={items} />;
 }
 
-function ScrollIntro() {
+function ScrollIntro({ items }: { items: SphereItem[] }) {
   const track = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sky = useRef<HTMLDivElement>(null);
@@ -112,7 +112,8 @@ function ScrollIntro() {
     let raf = 0, W = 0, H = 0, bh = 0, bw = 0, usW = 0, inView = true;
 
     // Piezas del busto que vuelan a la esfera (cara A: trozo del busto; cara B: el proyecto).
-    const tiles = projects.map((p, i) => {
+    const ROWS = Math.ceil(items.length / COLS);
+    const tiles = items.map((p, i) => {
       const el = document.createElement("div");
       el.className = "absolute left-0 top-0 [transform-style:preserve-3d]";
       const front = document.createElement("div");
@@ -228,7 +229,7 @@ function ScrollIntro() {
           const card = cards.current[i];
           if (!card) return;
           const cr = card.getBoundingClientRect();
-          const k = smooth(clamp((burst - (i % 5) * 0.06) / 0.7, 0, 1));
+          const k = smooth(clamp((burst - (i % ROWS) * 0.06) / 0.7, 0, 1));
           const sx = fx0 + t.col * fw + fw / 2, sy = fy0 + t.row * fh + fh / 2;
           const tx = cr.left - sr.left + cr.width / 2, ty = cr.top - sr.top + cr.height / 2;
           const x = lerp(sx, tx, k), y = lerp(sy, ty, k), z = Math.sin(Math.PI * k) * 200;
@@ -267,7 +268,7 @@ function ScrollIntro() {
       camera.tracker?.stop();
       setReel({ active: false });
     };
-  }, []);
+  }, [items]);
 
   const titleChars = "Proyectos_".split("");
 
@@ -348,7 +349,7 @@ function ScrollIntro() {
             </span>
           </h2>
           <div className="relative mt-2 flex-1 lg:px-[var(--gutter)]">
-            <ProjectSphere controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
+            <ProjectSphere items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
           </div>
         </div>
       </div>
@@ -357,7 +358,7 @@ function ScrollIntro() {
 }
 
 // Movimiento reducido: la misma historia, estática y en orden.
-function StaticIntro() {
+function StaticIntro({ items }: { items: SphereItem[] }) {
   return (
     <>
       <Hero />
@@ -366,7 +367,7 @@ function StaticIntro() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/head.webp" alt="Busto de 2894_: una cabeza azul con nubes" className="h-[60svh] w-auto" />
       </section>
-      <Projects />
+      <Projects items={items} />
     </>
   );
 }
