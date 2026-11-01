@@ -269,6 +269,9 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
         bust.current.style.opacity = String(burst > 0 ? 0 : bustIn);
         bust.current.style.visibility = bustIn > 0 && burst <= 0 ? "visible" : "hidden";
         bust.current.style.transform = `translate(${X - fxF}px,${Y - fyF}px) scale(${s})`;
+        // Contorno: sombra muy suave para que las nubes del borde no se confundan con el fondo blanco
+        // (solo a tamaño final: el filtro sobre el busto ampliado sería caro).
+        bust.current.style.filter = s < 1.6 ? "drop-shadow(0 0 1px rgb(10 50 120 / 0.35)) drop-shadow(0 18px 36px rgb(11 11 13 / 0.12))" : "";
       }
       // "Una nueva forma de diseñar" bajo el logo, palabra a palabra; se aleja con el logo en el zoom out.
       if (phrase.current) {
@@ -286,7 +289,7 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
         }
         ph.querySelectorAll<HTMLElement>("[data-word]").forEach((w, i) => {
           const kk = direct ? easeOut(seg(p, 0.008 + i * 0.008, 0.03 + i * 0.008)) : easeOut(seg(p, 0.15 + i * 0.014, 0.19 + i * 0.014));
-          w.style.transform = `translateY(${110 * (1 - kk)}%)`;
+          w.style.transform = `translateY(${150 * (1 - kk)}%)`; // 150 %: también oculta la tilde de la Ñ
         });
       }
       const gone = smooth(seg(p, T.burst[0] - 0.025, T.burst[0] + 0.005)); // todo se retira cuando el busto se parte
@@ -394,8 +397,8 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
           <p className="sr-only">Una nueva forma de diseñar</p>
           <p data-line aria-hidden className="absolute inset-x-[var(--gutter)] flex flex-wrap justify-center gap-x-[0.3em] text-center text-[clamp(1.4rem,4vw,3.4rem)] font-medium uppercase leading-none tracking-[-0.03em]">
             {["Una", "nueva", "forma", "de", "diseñar"].map((w) => (
-              <span key={w} className="-mb-[0.12em] inline-block overflow-hidden pb-[0.12em]">
-                <span data-word className="inline-block" style={{ transform: "translateY(110%)" }}>
+              <span key={w} className="-mb-[0.12em] -mt-[0.24em] inline-block overflow-hidden pb-[0.12em] pt-[0.24em]">
+                <span data-word className="inline-block" style={{ transform: "translateY(150%)" }}>
                   {w}
                 </span>
               </span>
