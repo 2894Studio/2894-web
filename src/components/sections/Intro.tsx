@@ -278,8 +278,8 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
         const ph = phrase.current;
         const line = ph.querySelector<HTMLElement>("[data-line]");
         if (direct) {
-          // Abajo del vídeo, dentro del marco; se va con el vídeo.
-          ph.style.opacity = String(1 - videoOut);
+          // Alternativa: el vídeo va sin texto (la frase queda junto al busto).
+          ph.style.opacity = "0";
           ph.style.transform = `scale(${reelScale})`;
           if (line) line.style.top = `${H - inset - Math.max(H * 0.05, 24) - 72 - line.offsetHeight}px`; // por encima de la barra reproductor
         } else {
@@ -408,8 +408,20 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
 
         {/* La frase, sutil, a los lados del busto (en móvil, arriba) */}
         <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[clamp(0.95rem,1.5vw,1.4rem)] font-medium uppercase tracking-[0.04em] text-ink/45 opacity-0">
-          <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">Una nueva forma</span>
-          <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">de diseñar</span>
+          {direct ? (
+            // Alternativa: el nombre del estudio a un lado y la frase al otro.
+            <>
+              <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">
+                2894<span className="blink">_</span> Studio
+              </span>
+              <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] max-w-[48%] text-right sm:top-1/2 sm:max-w-[min(30vw,22rem)] sm:-translate-y-1/2">Una nueva forma de diseñar</span>
+            </>
+          ) : (
+            <>
+              <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">Una nueva forma</span>
+              <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">de diseñar</span>
+            </>
+          )}
         </div>
 
         {/* Busto */}
@@ -431,7 +443,7 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
           className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]"
         >
           <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
-          <p className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/70 to-transparent px-3 pb-4 pt-2 text-[11px] font-medium uppercase leading-tight tracking-wide text-cloud sm:text-xs">
+          <p className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/70 to-transparent px-4 pb-6 pt-3.5 text-[11px] sm:px-5 sm:pt-4 font-medium uppercase leading-tight tracking-wide text-cloud sm:text-xs">
             Bienvenido a 2894<span className="blink">_</span> Studio
           </p>
           <button type="button" onClick={stopCam} className="flex min-h-11 w-full items-center justify-center bg-white/90 text-xs font-medium text-ink hover:bg-white">
