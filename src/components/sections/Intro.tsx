@@ -16,8 +16,14 @@ import type { SphereItem } from "@/lib/projects";
 // sobre el cielo y, debajo, "Una nueva forma de diseñar" palabra a palabra → zoom out: el cielo era la frente
 // del busto (máscara con su silueta) y aparece el busto grande → espejo de la cámara → el busto se parte en las
 // tarjetas de la esfera → "PROYECTOS_".
-const TRACK_SVH = 600;
-const PROJECTS_AT = 0.86; // progreso en el que la esfera ya está formada (destino del ancla #proyectos)
+// Variante "directo" (alternativa): el showreel lleva "Una nueva forma de diseñar" abajo; al bajar, el vídeo se
+// retira y el cielo de detrás se convierte en el busto de inmediato, sin el paso por el logo.
+export type IntroVariant = "logo" | "directo";
+// Tramos de cada variante (fracciones del recorrido). track: alto en svh; at: la esfera ya está formada (#proyectos).
+const TIMING = {
+  logo: { track: 600, zoom: [0.27, 0.43], burst: [0.6, 0.8], title: [0.8, 0.88], at: 0.86 },
+  directo: { track: 480, zoom: [0.08, 0.26], burst: [0.44, 0.64], title: [0.64, 0.72], at: 0.7 },
+} as const;
 const IMG_W = 1063, IMG_H = 1518;
 const BBOX = [0.206, 0.108, 0.752, 0.882]; // figura dentro del PNG del busto
 const FOCUS = [0.5, 0.3]; // punto de la frente desde el que se aleja la cámara
@@ -47,13 +53,15 @@ const Glyphs = ({ num, us, fill }: { num: GlyphRef; us: GlyphRef; fill?: string 
   </>
 );
 
-export function Intro({ items }: { items: SphereItem[] }) {
+export function Intro({ items, variant = "logo" }: { items: SphereItem[]; variant?: IntroVariant }) {
   const reduced = useReducedMotion();
   if (reduced) return <StaticIntro items={items} />;
-  return <ScrollIntro items={items} />;
+  return <ScrollIntro items={items} variant={variant} />;
 }
 
-function ScrollIntro({ items }: { items: SphereItem[] }) {
+function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVariant }) {
+  const T = TIMING[variant];
+  const direct = variant === "directo";
   const track = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sky = useRef<HTMLDivElement>(null);
@@ -62,6 +70,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
   const nums = useRef<(SVGTextElement | null)[]>([]);
   const uss = useRef<(SVGTextElement | null)[]>([]);
   const phrase = useRef<HTMLDivElement>(null);
+  const sides = useRef<HTMLDivElement>(null);
   const mirrorVideo = useRef<HTMLDivElement>(null);
   const mirror = useRef<HTMLDivElement>(null);
   const bust = useRef<HTMLDivElement>(null);
@@ -182,19 +191,22 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       const inset = a * clamp(W * 0.06, 24, 96);
       if (head) head.style.padding = `${inset}px`;
       if (fr) fr.style.borderRadius = `${a * 48}px`;
-      setReel({ active: inView && p < 0.055 });
+      setReel({ active: inView && p < (direct ? 0.07 : 0.055) });
 
       // 2 · El vídeo queda recortado dentro de "2894": el marco se encoge hacia el centro mientras las letras
       // (enormes al principio) bajan a su tamaño. Fuera de las letras se ve el cielo.
-      const clipOn = p > 0.05;
+      const clipOn = !direct && p > 0.05;
       const rk = smooth(seg(p, 0.05, 0.1));
       const shrink = easeOut(seg(p, 0.05, 0.12));
       const sc = Math.exp(lerp(Math.log(2.6), 0, shrink));
       const us = smooth(seg(p, 0.11, 0.15)); // aparece el guion y el número se recentra
-      const videoOut = smooth(seg(p, 0.12, 0.17));
+      // En la variante directa el vídeo se aleja y se apaga hacia el centro, dejando el cielo de detrás.
+      const videoOut = direct ? smooth(seg(p, 0.07, 0.13)) : smooth(seg(p, 0.12, 0.17));
+      const reelScale = direct ? lerp(1, 0.82, videoOut) : 1;
       if (head) {
         head.style.clipPath = clipOn ? `url(#${clipId})` : "";
         head.style.opacity = String(1 - videoOut);
+        head.style.transform = direct ? `scale(${reelScale})` : "";
         head.style.visibility = videoOut >= 1 ? "hidden" : "";
       }
       if (clipRect.current) {
@@ -208,7 +220,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
 
       // 3 · Zoom out: el cielo es la frente del busto. La silueta (máscara) pasa de cubrir toda la pantalla
       // a su tamaño final; el punto de la frente viaja del centro de la pantalla a su sitio en el busto.
-      const k = smooth(seg(p, 0.27, 0.43));
+      const k = smooth(seg(p, T.zoom[0], T.zoom[1]));
       const s0 = (Math.hypot(W, H) / 2 / (FOCUS_R * bw)) * 1.08;
       const s = Math.exp(lerp(Math.log(s0), 0, k));
       const t = s0 > 1 ? (1 / s - 1 / s0) / (1 - 1 / s0) : 1;
@@ -248,11 +260,11 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
           u.setAttribute("transform", `${G} translate(${ux} 0) scale(${Math.max(us, 0.0001)} 1) translate(${-ux} 0)`);
         }
       });
-      if (logoSvg.current) logoSvg.current.style.opacity = String(logoIn * (1 - logoOut));
+      if (logoSvg.current) logoSvg.current.style.opacity = direct ? "0" : String(logoIn * (1 - logoOut));
 
       // 4 · La pintura del busto aparece encima del cielo con la misma escala y posición.
       const bustIn = smooth(seg(k, 0.55, 0.92));
-      const burst = seg(p, 0.6, 0.8);
+      const burst = seg(p, T.burst[0], T.burst[1]);
       if (bust.current) {
         bust.current.style.opacity = String(burst > 0 ? 0 : bustIn);
         bust.current.style.visibility = bustIn > 0 && burst <= 0 ? "visible" : "hidden";
@@ -261,20 +273,30 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       // "Una nueva forma de diseñar" bajo el logo, palabra a palabra; se aleja con el logo en el zoom out.
       if (phrase.current) {
         const ph = phrase.current;
-        ph.style.opacity = String(1 - logoOut);
-        ph.style.transform = `translate(${X - cx}px,${Y - cy}px) scale(${s / s0})`;
         const line = ph.querySelector<HTMLElement>("[data-line]");
-        if (line) line.style.top = `${cy + fs * 0.35 + fs * 0.2}px`; // justo bajo la línea base del logo
+        if (direct) {
+          // Abajo del vídeo, dentro del marco; se va con el vídeo.
+          ph.style.opacity = String(1 - videoOut);
+          ph.style.transform = `scale(${reelScale})`;
+          if (line) line.style.top = `${H - inset - Math.max(H * 0.05, 24) - 72 - line.offsetHeight}px`; // por encima de la barra reproductor
+        } else {
+          ph.style.opacity = String(1 - logoOut);
+          ph.style.transform = `translate(${X - cx}px,${Y - cy}px) scale(${s / s0})`;
+          if (line) line.style.top = `${cy + fs * 0.35 + fs * 0.2}px`; // justo bajo la línea base del logo
+        }
         ph.querySelectorAll<HTMLElement>("[data-word]").forEach((w, i) => {
-          const kk = easeOut(seg(p, 0.15 + i * 0.014, 0.19 + i * 0.014));
+          const kk = direct ? easeOut(seg(p, 0.008 + i * 0.008, 0.03 + i * 0.008)) : easeOut(seg(p, 0.15 + i * 0.014, 0.19 + i * 0.014));
           w.style.transform = `translateY(${110 * (1 - kk)}%)`;
         });
       }
-      if (mirror.current) mirror.current.style.opacity = String(smooth(seg(p, 0.42, 0.46)) * (1 - smooth(seg(p, 0.58, 0.61))));
+      const gone = smooth(seg(p, T.burst[0] - 0.025, T.burst[0] + 0.005)); // todo se retira cuando el busto se parte
+      if (mirror.current) mirror.current.style.opacity = String(smooth(seg(p, T.zoom[1] - 0.01, T.zoom[1] + 0.03)) * (1 - gone));
+      // La frase queda de forma sutil a los lados del busto.
+      if (sides.current) sides.current.style.opacity = String(smooth(seg(k, 0.85, 1)) * (1 - gone));
 
       // Cámara: se pide al terminar el zoom y se pausa fuera del tramo del busto.
       const c = camRef.current;
-      if (p > 0.4 && p < 0.62 && inView) {
+      if (p > T.zoom[1] - 0.03 && p < T.burst[0] + 0.02 && inView) {
         if (c.state === "idle") startCam();
       } else if (c.state === "on") pauseCam();
 
@@ -314,7 +336,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       }
 
       // 6 · "PROYECTOS_"
-      const ttl = seg(p, 0.8, 0.88);
+      const ttl = seg(p, T.title[0], T.title[1]);
       title.current?.querySelectorAll<HTMLElement>("[data-char]").forEach((sp, i) => {
         const kk = easeOut(clamp((ttl - i * 0.06) / 0.4, 0, 1));
         sp.style.transform = `translateY(${110 * (1 - kk)}%)`;
@@ -329,14 +351,14 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       camera.tracker?.stop();
       setReel({ active: false });
     };
-  }, [items, clipId]);
+  }, [items, clipId, direct, T]);
 
   const titleChars = "Proyectos_".split("");
 
   return (
-    <section ref={track} aria-label="Apertura" className="relative" style={{ height: `${TRACK_SVH}svh` }}>
+    <section ref={track} aria-label="Apertura" className="relative" style={{ height: `${T.track}svh` }}>
       {/* Anclas de navegación dentro del recorrido */}
-      <div id="proyectos" data-anchor aria-hidden className="pointer-events-none absolute left-0 w-px" style={{ top: `${PROJECTS_AT * (TRACK_SVH - 100)}svh` }} />
+      <div id="proyectos" data-anchor aria-hidden className="pointer-events-none absolute left-0 w-px" style={{ top: `${T.at * (T.track - 100)}svh` }} />
 
       <div ref={stage} className="sticky top-0 h-svh overflow-hidden bg-cloud">
         {/* Recorte del vídeo: marco que se encoge + "2894_" */}
@@ -381,6 +403,12 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
           </p>
         </div>
 
+        {/* La frase, sutil, a los lados del busto (en móvil, arriba) */}
+        <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[clamp(0.95rem,1.5vw,1.4rem)] font-medium uppercase tracking-[0.04em] text-ink/45 opacity-0">
+          <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">Una nueva forma</span>
+          <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">de diseñar</span>
+        </div>
+
         {/* Busto */}
         <div ref={bust} className="invisible absolute opacity-0 will-change-transform">
           <HeadFollow src="/brand/head.webp" depth="/brand/head-depth.png" alt="Busto de 2894_: una cabeza azul con nubes" className="h-full w-full" target={look} />
@@ -397,7 +425,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
         <div
           ref={mirror}
           hidden={cam !== "on"}
-          className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:top-[calc(16px+env(safe-area-inset-top,0px))] max-sm:bottom-auto max-sm:w-[132px]"
+          className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]"
         >
           <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
           <p className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/70 to-transparent px-3 pb-4 pt-2 text-[11px] font-medium uppercase leading-tight tracking-wide text-cloud sm:text-xs">
