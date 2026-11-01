@@ -20,8 +20,15 @@ const Chars = ({ text }: { text: string }) => (
 );
 
 const WhatsAppIcon = () => (
-  <svg aria-hidden viewBox="0 0 24 24" className="size-6" fill="currentColor">
+  <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="currentColor">
     <path d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5 5.1-1.3A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-3-.2-.3a8.2 8.2 0 1 1 6.9 3.9Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z" />
+  </svg>
+);
+
+const MailIcon = () => (
+  <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
   </svg>
 );
 
@@ -29,7 +36,7 @@ const whatsappHref = `https://wa.me/${studio.whatsapp}?text=${encodeURIComponent
 const mailHref = `mailto:${studio.email}?subject=${encodeURIComponent("Proyecto con 2894_")}`;
 
 // Cierre: el fondo pasa de blanco a azul de forma gradual (igual al bajar que al subir) y después aparece el contacto.
-// WhatsApp es la vía principal; el correo abre directamente un mensaje nuevo.
+// Primero el contacto (correo y teléfono, con acción directa); la navegación queda al final.
 export function Footer() {
   const reduced = useReducedMotion();
   const root = useRef<HTMLElement>(null);
@@ -58,58 +65,69 @@ export function Footer() {
     <footer ref={root} id="contacto" className={reduced ? "" : "h-[240svh]"}>
       <div ref={stage} className={`flex flex-col px-[var(--gutter)] pt-[clamp(4rem,10vh,8rem)] ${reduced ? "bg-cobalt text-cloud" : "sticky top-0 h-svh bg-cloud text-ink"}`}>
         <h2 data-head className="text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
-          <span className="sr-only">Hablemos</span>
+          <span className="sr-only">Contacto</span>
           <span aria-hidden>
-            <Chars text="Hablemos" />
+            <Chars text="Contacto" />
           </span>
         </h2>
 
-        <div data-reveal className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noreferrer"
-            className="spring inline-flex min-h-14 items-center gap-3 rounded-full bg-cloud px-7 text-lg font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud"
-          >
-            <WhatsAppIcon />
-            Escríbenos por WhatsApp
-          </a>
-          <a href={mailHref} className="inline-flex min-h-11 items-center text-lg underline decoration-1 underline-offset-[6px] hover:text-sky focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
-            {studio.email}
-          </a>
-        </div>
-
-        <div data-reveal className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
-            {nav.map((n) => (
-              <li key={n.href}>
-                <a href={n.href} className="spring inline-block min-h-11 py-2 hover:text-sky">
-                  {n.label}
+        {/* Lo importante primero: correo y teléfono, cada uno con su acción directa */}
+        <dl className="mt-8 grid max-w-3xl gap-3">
+          <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+            <div>
+              <dt className="text-sm opacity-75">Correo</dt>
+              <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">{studio.email}</dd>
+            </div>
+            <a href={mailHref} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
+              <MailIcon />
+              Enviar correo
+            </a>
+          </div>
+          <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+            <div>
+              <dt className="text-sm opacity-75">Teléfono</dt>
+              <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
+                <a href={`tel:${studio.phone.replace(/\s/g, "")}`} className="underline decoration-1 underline-offset-[6px] hover:text-sky">
+                  {studio.phone}
                 </a>
-              </li>
-            ))}
-          </ul>
-          <p>
-            {studio.facts.location} · {studio.phone}
-          </p>
-        </div>
+              </dd>
+            </div>
+            <a href={whatsappHref} target="_blank" rel="noreferrer" className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
+              <WhatsAppIcon />
+              WhatsApp
+            </a>
+          </div>
+        </dl>
 
         <div data-mark aria-hidden className="mt-auto select-none whitespace-nowrap text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
           <Chars text="2894_" />
         </div>
 
-        <details data-reveal className="relative pb-24 text-sm">
-          <summary className="min-h-11 cursor-pointer py-3">Créditos de imagen</summary>
-          <ul className="absolute bottom-full left-0 grid max-h-[50svh] w-full gap-1 overflow-auto rounded-2xl bg-cobalt p-4 text-cloud sm:grid-cols-2">
-            {stock.map((s) => (
-              <li key={s.src}>
-                <a href={s.page} className="underline underline-offset-2" rel="noreferrer">
-                  {s.credit}
+        {/* Al final de todo: navegación, ubicación y créditos */}
+        <div data-reveal className="flex flex-wrap items-center gap-x-6 gap-y-1 pb-24 text-sm">
+          <ul className="flex flex-wrap gap-x-5">
+            {nav.map((n) => (
+              <li key={n.href}>
+                <a href={n.href} className="inline-block min-h-11 py-3 hover:text-sky">
+                  {n.label}
                 </a>
               </li>
             ))}
           </ul>
-        </details>
+          <p>{studio.facts.location}</p>
+          <details className="relative">
+            <summary className="min-h-11 cursor-pointer py-3">Créditos de imagen</summary>
+            <ul className="absolute bottom-full left-0 grid max-h-[50svh] w-[min(640px,calc(100vw-32px))] gap-1 overflow-auto rounded-2xl bg-cobalt p-4 text-cloud sm:grid-cols-2">
+              {stock.map((s) => (
+                <li key={s.src}>
+                  <a href={s.page} className="underline underline-offset-2" rel="noreferrer">
+                    {s.credit}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
       </div>
     </footer>
   );

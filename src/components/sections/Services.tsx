@@ -59,7 +59,7 @@ export function Services() {
   const skyControls = useRef<SkyControls>({ ...SKY_DEFAULTS });
   const [ctrl, setCtrl] = useState<SkyControls>({ ...SKY_DEFAULTS });
   const [skyKey, setSkyKey] = useState(SKIES[0].key);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true); // abierto por defecto al llegar a Grow
   const pinST = useRef<ScrollTrigger | null>(null);
   const setControl = (k: keyof SkyControls, v: number) => {
     skyControls.current = { ...skyControls.current, [k]: v };
@@ -183,29 +183,30 @@ export function Services() {
 
       {/* Grow: panel para jugar con el cielo, como en un laboratorio. */}
       {!reduced && active === LAST && (
-        <div className="absolute bottom-[calc(96px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[min(300px,calc(100vw-32px))] text-ink">
+        <div className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] left-[var(--gutter)] right-[var(--gutter)] z-20 text-ink sm:bottom-[calc(96px+env(safe-area-inset-bottom,0px))] sm:left-auto sm:w-[300px]">
           <button
             type="button"
             aria-expanded={panelOpen}
             aria-controls="sky-panel"
             onClick={() => setPanelOpen((o) => !o)}
-            className="spring ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-sm font-medium backdrop-blur-lg"
+            className="spring ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-sm font-medium backdrop-blur-lg max-sm:min-h-9"
           >
-            {panelOpen ? "Cerrar" : "Ajustar el cielo"}
+            {panelOpen ? "Ocultar controles" : "Ajustar el cielo"}
           </button>
-          <div id="sky-panel" hidden={!panelOpen} className="mt-2 space-y-3 rounded-3xl border border-white/50 bg-white/75 p-4 text-sm backdrop-blur-lg">
+          <div id="sky-panel" hidden={!panelOpen} className="mt-2 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-4 gap-y-1 rounded-3xl border border-white/50 bg-white/75 p-3 text-sm backdrop-blur-lg sm:block sm:space-y-3 sm:p-4">
             {([
               ["count", "Nubes", 1, 7, 1],
               ["size", "Tamaño", 0.6, 1.6, 0.05],
               ["wind", "Viento", 0, 4, 0.1],
               ["softness", "Bordes", 0.3, 1.8, 0.05],
             ] as const).map(([k, label, min, max, step]) => (
-              <label key={k} className="grid grid-cols-[5.5rem_1fr_2.5rem] items-center gap-2">
+              <label key={k} className="grid min-w-0 grid-cols-[3.4rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[5.5rem_1fr_2.5rem]">
                 <span>{label}</span>
-                <input type="range" min={min} max={max} step={step} value={ctrl[k]} onChange={(e) => setControl(k, Number(e.target.value))} className="accent-cobalt" />
-                <span className="text-right tabular-nums">{k === "count" ? ctrl[k] : ctrl[k].toFixed(1)}</span>
+                <input type="range" min={min} max={max} step={step} value={ctrl[k]} onChange={(e) => setControl(k, Number(e.target.value))} className="w-full min-w-0 accent-cobalt" />
+                <span className="hidden text-right tabular-nums sm:inline">{k === "count" ? ctrl[k] : ctrl[k].toFixed(1)}</span>
               </label>
             ))}
+            <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:block sm:space-y-3">
             <div role="group" aria-label="Color del cielo" className="flex flex-wrap gap-1">
               {SKIES.map((k) => (
                 <button key={k.key} type="button" aria-pressed={skyKey === k.key} onClick={() => setSkyKey(k.key)} className={`min-h-11 rounded-full px-3 ${skyKey === k.key ? "bg-ink text-cloud" : "bg-ink/5"}`}>
@@ -224,6 +225,7 @@ export function Services() {
             >
               Restablecer
             </button>
+            </div>
           </div>
         </div>
       )}

@@ -386,7 +386,7 @@ export function CloudSky({
       raf = requestAnimationFrame(frame);
       const raw = Math.min(0.1, (now - last) / 1000);
       last = now;
-      if (!visible || document.hidden) return;
+      if (!visible || document.hidden || !activeRef.current) return; // inactivo: no pinta (ahorra GPU)
       const dt = Math.min(raw, 1 / 20);
       phase += dt * (reduce ? 0.2 : 1);
       updatePointer(dt);

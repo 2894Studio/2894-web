@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { registerReel, setReel } from "@/lib/reel";
+import { registerReel, setReel, useReel } from "@/lib/reel";
 import { reel, studio } from "@/content/site";
 
 const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1&mute=1&loop=1&playlist=${reel.youtubeId}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
@@ -14,6 +14,9 @@ const src = `https://www.youtube-nocookie.com/embed/${reel.youtubeId}?autoplay=1
 export function Hero({ managed = false }: { managed?: boolean }) {
   const reduced = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
+  const { playing } = useReel();
+  // En pausa se tapa con el fotograma: así no aparece la pantalla de pausa de YouTube.
+  const showVideo = loaded && playing;
   const soundAt = useRef(0); // instante del último cambio de sonido: ignora avisos de YouTube aún sin aplicar
   const playingRef = useRef(true);
   const mutedRef = useRef(true);
@@ -105,7 +108,7 @@ export function Hero({ managed = false }: { managed?: boolean }) {
       <div ref={frame} data-reel-frame className="relative h-full overflow-hidden bg-ink [container-type:size]">
         <div ref={media} data-reel-media className="absolute inset-0 [container-type:size]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={reel.poster} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${loaded ? "opacity-0" : "opacity-100"}`} />
+        <img src={reel.poster} alt="" className={`absolute inset-0 z-[1] h-full w-full object-cover transition-opacity duration-700 ${showVideo ? "opacity-0" : "opacity-100"}`} />
         {!reduced && (
           <iframe
             ref={player}
@@ -117,7 +120,7 @@ export function Hero({ managed = false }: { managed?: boolean }) {
             allow="autoplay; encrypted-media"
             onLoad={() => player.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening" }), "*")}
             src={src}
-            className={`pointer-events-none absolute left-1/2 top-1/2 h-[max(100cqh,56.25cqw)] w-[max(100cqw,177.78cqh)] -translate-x-1/2 -translate-y-1/2 border-0 transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`pointer-events-none absolute left-1/2 top-1/2 h-[max(120cqh,67.5cqw)] w-[max(120cqw,213.33cqh)] -translate-x-1/2 -translate-y-1/2 border-0 transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`}
           />
         )}
         </div>
