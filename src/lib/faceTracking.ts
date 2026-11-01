@@ -4,7 +4,8 @@
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
 
-export type FaceTracker = { stop: () => void };
+// `video` es la imagen de la cámara (para mostrarla como espejo); no se graba ni se envía a ningún sitio.
+export type FaceTracker = { stop: () => void; video: HTMLVideoElement };
 
 export async function startFaceTracking(onFace: (x: number, y: number) => void, onLost: () => void): Promise<FaceTracker> {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("sin-camara");
@@ -41,11 +42,13 @@ export async function startFaceTracking(onFace: (x: number, y: number) => void, 
     };
     raf = requestAnimationFrame(loop);
     return {
+      video,
       stop: () => {
         stopped = true;
         cancelAnimationFrame(raf);
         detector.close();
         stopStream();
+        video.remove();
       },
     };
   } catch (e) {

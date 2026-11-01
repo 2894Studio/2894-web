@@ -13,10 +13,11 @@ import type { SphereItem } from "@/lib/projects";
 
 // Apertura en una sola escena fijada y guiada por el scroll:
 // showreel con el cielo ya detrás → el vídeo queda recortado dentro de "2894" → aparece el "_" → logo blanco
-// sobre el cielo → zoom out: el cielo era la frente del busto (máscara con su silueta) y aparece el busto con
-// "Una nueva forma de diseñar" alrededor → el busto se parte en las tarjetas de la esfera → "PROYECTOS_".
-const TRACK_SVH = 760;
-const PROJECTS_AT = 0.88; // progreso en el que la esfera ya está formada (destino del ancla #proyectos)
+// sobre el cielo y, debajo, "Una nueva forma de diseñar" palabra a palabra → zoom out: el cielo era la frente
+// del busto (máscara con su silueta) y aparece el busto grande → espejo de la cámara → el busto se parte en las
+// tarjetas de la esfera → "PROYECTOS_".
+const TRACK_SVH = 600;
+const PROJECTS_AT = 0.86; // progreso en el que la esfera ya está formada (destino del ancla #proyectos)
 const IMG_W = 1063, IMG_H = 1518;
 const BBOX = [0.206, 0.108, 0.752, 0.882]; // figura dentro del PNG del busto
 const FOCUS = [0.5, 0.3]; // punto de la frente desde el que se aleja la cámara
@@ -60,7 +61,9 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
   const logoSvg = useRef<SVGSVGElement>(null);
   const nums = useRef<(SVGTextElement | null)[]>([]);
   const uss = useRef<(SVGTextElement | null)[]>([]);
-  const slogan = useRef<HTMLDivElement>(null);
+  const phrase = useRef<HTMLDivElement>(null);
+  const mirrorVideo = useRef<HTMLDivElement>(null);
+  const mirror = useRef<HTMLDivElement>(null);
   const bust = useRef<HTMLDivElement>(null);
   const tilesEl = useRef<HTMLDivElement>(null);
   const projectsEl = useRef<HTMLDivElement>(null);
@@ -89,6 +92,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
     )
       .then((t) => {
         c.tracker = t;
+        mirrorVideo.current?.replaceChildren(t.video);
         c.granted = true;
         c.state = "on";
         setCam("on");
@@ -138,7 +142,8 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
     const measure = () => {
       W = st.clientWidth;
       H = st.clientHeight;
-      bh = Math.min(H * (W < 640 ? 0.56 : 0.68), W * 0.9 * IMG_H / IMG_W);
+      // Busto grande: la figura ocupa ~3/4 del alto (o ~82 % del ancho en pantallas estrechas).
+      bh = Math.min(H * 0.95, ((W * 0.82) / (BBOX[2] - BBOX[0])) * IMG_H / IMG_W);
       bw = bh * IMG_W / IMG_H;
       if (bust.current) {
         const b = bust.current.style;
@@ -172,21 +177,21 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       const cx = W / 2, cy = H / 2;
 
       // 1 · Showreel: se enmarca con bordes redondeados y alrededor ya está el cielo.
-      const a = smooth(seg(p, 0, 0.06));
+      const a = smooth(seg(p, 0, 0.05));
       const head = headerEl(), fr = frameEl();
       const inset = a * clamp(W * 0.06, 24, 96);
       if (head) head.style.padding = `${inset}px`;
       if (fr) fr.style.borderRadius = `${a * 48}px`;
-      setReel({ active: inView && p < 0.07 });
+      setReel({ active: inView && p < 0.055 });
 
       // 2 · El vídeo queda recortado dentro de "2894": el marco se encoge hacia el centro mientras las letras
       // (enormes al principio) bajan a su tamaño. Fuera de las letras se ve el cielo.
-      const clipOn = p > 0.06;
-      const rk = smooth(seg(p, 0.06, 0.14));
-      const shrink = easeOut(seg(p, 0.06, 0.17));
+      const clipOn = p > 0.05;
+      const rk = smooth(seg(p, 0.05, 0.1));
+      const shrink = easeOut(seg(p, 0.05, 0.12));
       const sc = Math.exp(lerp(Math.log(2.6), 0, shrink));
-      const us = smooth(seg(p, 0.17, 0.22)); // aparece el guion y el número se recentra
-      const videoOut = smooth(seg(p, 0.2, 0.28));
+      const us = smooth(seg(p, 0.11, 0.15)); // aparece el guion y el número se recentra
+      const videoOut = smooth(seg(p, 0.12, 0.17));
       if (head) {
         head.style.clipPath = clipOn ? `url(#${clipId})` : "";
         head.style.opacity = String(1 - videoOut);
@@ -203,7 +208,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
 
       // 3 · Zoom out: el cielo es la frente del busto. La silueta (máscara) pasa de cubrir toda la pantalla
       // a su tamaño final; el punto de la frente viaja del centro de la pantalla a su sitio en el busto.
-      const k = smooth(seg(p, 0.3, 0.5));
+      const k = smooth(seg(p, 0.27, 0.43));
       const s0 = (Math.hypot(W, H) / 2 / (FOCUS_R * bw)) * 1.08;
       const s = Math.exp(lerp(Math.log(s0), 0, k));
       const t = s0 > 1 ? (1 / s - 1 / s0) / (1 - 1 / s0) : 1;
@@ -225,8 +230,8 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       // Logo: recorte del vídeo y, cuando el vídeo se apaga, el mismo logo en blanco; se aleja con el cielo.
       const total = numW + usW * us;
       const x0 = cx - total / 2, base = cy + fs * 0.35;
-      const logoIn = smooth(seg(p, 0.2, 0.28));
-      const logoOut = smooth(seg(k, 0.15, 0.55));
+      const logoIn = smooth(seg(p, 0.12, 0.17));
+      const logoOut = smooth(seg(k, 0.1, 0.45));
       [0, 1].forEach((i) => {
         // i 0 = recorte (escala del encogimiento); i 1 = logo blanco (se aleja con el cielo)
         const z = i === 0 ? sc : s / s0;
@@ -247,26 +252,29 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
 
       // 4 · La pintura del busto aparece encima del cielo con la misma escala y posición.
       const bustIn = smooth(seg(k, 0.55, 0.92));
-      const burst = seg(p, 0.62, 0.82);
+      const burst = seg(p, 0.6, 0.8);
       if (bust.current) {
         bust.current.style.opacity = String(burst > 0 ? 0 : bustIn);
         bust.current.style.visibility = bustIn > 0 && burst <= 0 ? "visible" : "hidden";
         bust.current.style.transform = `translate(${X - fxF}px,${Y - fyF}px) scale(${s})`;
       }
-      const sloganIn = smooth(seg(p, 0.42, 0.54)), sloganOut = smooth(seg(p, 0.62, 0.68));
-      if (slogan.current) {
-        slogan.current.style.opacity = String(sloganIn * (1 - sloganOut));
-        slogan.current.style.transform = `scale(${lerp(1.35, 1, easeOut(sloganIn)) * lerp(1, 1.08, sloganOut)})`;
-        slogan.current.querySelectorAll<HTMLElement>("[data-from]").forEach((el) => {
-          const [dx, dy] = (el.dataset.from ?? "0,0").split(",").map(Number);
-          const kk = 1 - easeOut(sloganIn);
-          el.style.transform = `translate(${dx * kk * 20}vw, ${dy * kk * 20}vh)`;
+      // "Una nueva forma de diseñar" bajo el logo, palabra a palabra; se aleja con el logo en el zoom out.
+      if (phrase.current) {
+        const ph = phrase.current;
+        ph.style.opacity = String(1 - logoOut);
+        ph.style.transform = `translate(${X - cx}px,${Y - cy}px) scale(${s / s0})`;
+        const line = ph.querySelector<HTMLElement>("[data-line]");
+        if (line) line.style.top = `${cy + fs * 0.35 + fs * 0.2}px`; // justo bajo la línea base del logo
+        ph.querySelectorAll<HTMLElement>("[data-word]").forEach((w, i) => {
+          const kk = easeOut(seg(p, 0.15 + i * 0.014, 0.19 + i * 0.014));
+          w.style.transform = `translateY(${110 * (1 - kk)}%)`;
         });
       }
+      if (mirror.current) mirror.current.style.opacity = String(smooth(seg(p, 0.42, 0.46)) * (1 - smooth(seg(p, 0.58, 0.61))));
 
       // Cámara: se pide al terminar el zoom y se pausa fuera del tramo del busto.
       const c = camRef.current;
-      if (p > 0.48 && p < 0.64 && inView) {
+      if (p > 0.4 && p < 0.62 && inView) {
         if (c.state === "idle") startCam();
       } else if (c.state === "on") pauseCam();
 
@@ -306,7 +314,7 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
       }
 
       // 6 · "PROYECTOS_"
-      const ttl = seg(p, 0.82, 0.9);
+      const ttl = seg(p, 0.8, 0.88);
       title.current?.querySelectorAll<HTMLElement>("[data-char]").forEach((sp, i) => {
         const kk = easeOut(clamp((ttl - i * 0.06) / 0.4, 0, 1));
         sp.style.transform = `translateY(${110 * (1 - kk)}%)`;
@@ -359,16 +367,18 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
           <Glyphs fill="#ffffff" num={(el) => void (nums.current[1] = el)} us={(el) => void (uss.current[1] = el)} />
         </svg>
 
-        {/* Slogan a pantalla completa alrededor del busto */}
-        <div ref={slogan} className="pointer-events-none absolute inset-0 text-cobalt opacity-0">
+        {/* "Una nueva forma de diseñar" bajo el logo */}
+        <div ref={phrase} className="pointer-events-none absolute inset-0 px-[var(--gutter)] text-cloud" style={{ transformOrigin: "50% 50%" }}>
           <p className="sr-only">Una nueva forma de diseñar</p>
-          <div aria-hidden className="absolute inset-0 px-[var(--gutter)] text-[clamp(3.4rem,15vw,9rem)] font-bold sm:text-[clamp(4rem,11vw,15rem)] uppercase leading-[0.86] tracking-[-0.055em]">
-            <span data-from="0,-1" className="absolute inset-x-0 top-[3svh] block text-center">Una nueva</span>
-            {/* En móvil "Forma de" va bajo la primera línea; en pantallas anchas, a los lados del busto. */}
-            <span data-from="-1,0" className="absolute left-[var(--gutter)] top-[15svh] block sm:top-1/2 sm:-translate-y-1/2">Forma</span>
-            <span data-from="1,0" className="absolute right-[var(--gutter)] top-[15svh] block sm:top-1/2 sm:-translate-y-1/2">de</span>
-            <span data-from="0,1" className="absolute inset-x-0 bottom-[5svh] block text-center">diseñar</span>
-          </div>
+          <p data-line aria-hidden className="absolute inset-x-[var(--gutter)] flex flex-wrap justify-center gap-x-[0.3em] text-center text-[clamp(1.4rem,4vw,3.4rem)] font-medium uppercase leading-none tracking-[-0.03em]">
+            {["Una", "nueva", "forma", "de", "diseñar"].map((w) => (
+              <span key={w} className="-mb-[0.12em] inline-block overflow-hidden pb-[0.12em]">
+                <span data-word className="inline-block" style={{ transform: "translateY(110%)" }}>
+                  {w}
+                </span>
+              </span>
+            ))}
+          </p>
         </div>
 
         {/* Busto */}
@@ -376,19 +386,27 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
           <HeadFollow src="/brand/head.webp" depth="/brand/head-depth.png" alt="Busto de 2894_: una cabeza azul con nubes" className="h-full w-full" target={look} />
         </div>
 
-        {/* Aviso de la cámara */}
-        {(cam === "asking" || cam === "on") && (
+        {/* Cámara: aviso al pedir permiso y, con permiso, un espejo pequeño con la imagen de la cámara */}
+        {cam === "asking" && (
           <div className="absolute inset-x-0 bottom-[calc(88px+env(safe-area-inset-bottom,0px))] z-20 flex justify-center px-[var(--gutter)]">
-            <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full bg-white/70 px-4 py-2 text-center text-sm text-ink backdrop-blur-md">
-              {cam === "asking" ? "Permite la cámara para que el busto te mire. La imagen se procesa en tu dispositivo y no se guarda." : "El busto te sigue con la cámara."}
-              {cam === "on" && (
-                <button type="button" onClick={stopCam} className="min-h-11 font-medium underline underline-offset-4">
-                  Usar el ratón
-                </button>
-              )}
+            <p className="rounded-full bg-white/80 px-4 py-2 text-center text-sm text-ink backdrop-blur-md">
+              Permite la cámara para que el busto te mire. La imagen se procesa en tu dispositivo y no se guarda.
             </p>
           </div>
         )}
+        <div
+          ref={mirror}
+          hidden={cam !== "on"}
+          className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:top-[calc(16px+env(safe-area-inset-top,0px))] max-sm:bottom-auto max-sm:w-[132px]"
+        >
+          <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
+          <p className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/70 to-transparent px-3 pb-4 pt-2 text-[11px] font-medium uppercase leading-tight tracking-wide text-cloud sm:text-xs">
+            Bienvenido a 2894<span className="blink">_</span> Studio
+          </p>
+          <button type="button" onClick={stopCam} className="flex min-h-11 w-full items-center justify-center bg-white/90 text-xs font-medium text-ink hover:bg-white">
+            Usar el ratón
+          </button>
+        </div>
 
         {/* Piezas en vuelo */}
         <div ref={tilesEl} aria-hidden className="pointer-events-none absolute inset-0 [perspective:1600px]" />
