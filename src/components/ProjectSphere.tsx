@@ -15,6 +15,8 @@ const pointsFor = (n: number) =>
     return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
   });
 const BASE_SPEED = 0.0024; // rad por frame
+const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
+const smoothE = (t: number) => t * t * (3 - 2 * t);
 
 // Esfera de proyectos: gira solo sobre el eje vertical y cada imagen mira siempre al frente.
 // `controlled`: la aparición la hace otra pieza (la apertura, con las piezas del busto), así que las tarjetas
@@ -40,6 +42,11 @@ export function ProjectSphere({
   const [front, setFront] = useState(projects[0].title);
   const moved = useRef(false);
   const shown = pinned ?? hovered;
+  // Proyecto abierto con un clic: crece y se coloca en el centro de la pantalla; los demás siguen girando muy tenues.
+  const pinRef = useRef(-1);
+  useEffect(() => {
+    pinRef.current = pinned ? projects.findIndex((p) => p.id === pinned.id) : -1;
+  }, [pinned, projects]);
 
   useEffect(() => {
     const el = stage.current;
@@ -49,6 +56,9 @@ export function ProjectSphere({
     const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, drag: false, lx: 0, frontIdx: 0 };
     const POINTS = pointsFor(projects.length);
     const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
+    const em = projects.map(() => 0); // 0 en la esfera, 1 abierto en el centro
+    let dim = 0;
+    const PERSP = 1600; // igual que [perspective:1600px] del contenedor
 
     const resize = () => {
       s.R = Math.min(el.clientWidth * 0.4, 420);
@@ -63,6 +73,12 @@ export function ProjectSphere({
         s.v += ((reduced ? 0 : BASE_SPEED) - s.v) * 0.02; // vuelve despacio al giro base
       }
       let best = -2;
+      const pin = pinRef.current;
+      dim += ((pin >= 0 ? 1 : 0) - dim) * 0.12;
+      // Centro de la pantalla respecto al centro de la esfera (las tarjetas se colocan desde ahí).
+      const er = el.getBoundingClientRect();
+      const offX = window.innerWidth / 2 - (er.left + er.width / 2);
+      const offY = window.innerHeight * (window.innerWidth < 640 ? 0.3 : 0.55) - (er.top + er.height / 2);
       POINTS.forEach((p, i) => {
         const c = cards.current[i];
         if (!c) return;
@@ -80,10 +96,20 @@ export function ProjectSphere({
         c.style.height = `${w * 1.25}px`;
         c.style.marginLeft = `${-w / 2}px`;
         c.style.marginTop = `${-w * 0.625}px`;
-        c.style.transform = `translate3d(${x * s.R * k}px, ${-p.y * s.R * k}px, ${z * s.R * k}px) scale(${Math.min(1, k * 1.15) * (0.62 + depth * 0.38)})`;
-        c.style.opacity = String(Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75));
-        c.style.zIndex = String(Math.round(depth * 100));
-        c.style.pointerEvents = z > -0.15 && k > 0.8 ? "auto" : "none";
+        em[i] += ((i === pin ? 1 : 0) - em[i]) * 0.12;
+        const e = smoothE(em[i]);
+        // Posición en la esfera y, abierto, en el centro de la pantalla por delante de todo.
+        const zO = s.R * 1.3; // delante de las demás
+        const f = PERSP / (PERSP - zO); // aumento por perspectiva a esa profundidad, se compensa
+        const bigH = Math.min(window.innerHeight * (window.innerWidth < 640 ? 0.3 : 0.56), window.innerWidth * 0.7 * 1.25);
+        const bigS = bigH / (w * 1.25) / f;
+        const tx = lerpN(x * s.R * k, offX / f, e), ty = lerpN(-p.y * s.R * k, offY / f, e), tz = lerpN(z * s.R * k, zO, e);
+        const sc = lerpN(Math.min(1, k * 1.15) * (0.62 + depth * 0.38), bigS, e);
+        c.style.transform = `translate3d(${tx}px, ${ty}px, ${tz}px) scale(${sc})`;
+        const base = Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75);
+        c.style.opacity = String(i === pin ? lerpN(base, 1, e) : lerpN(base, base * 0.12, dim));
+        c.style.zIndex = String(e > 0.02 ? 500 : Math.round(depth * 100));
+        c.style.pointerEvents = (i === pin || (z > -0.15 && k > 0.8 && pin < 0)) ? "auto" : "none";
       });
     };
 
@@ -201,9 +227,9 @@ export function ProjectSphere({
               onPointerEnter={() => setHovered(p)}
               onFocus={() => setHovered(p)}
               onClick={() => !moved.current && setPinned((cur) => (cur?.id === p.id ? null : p))}
-              className={`group relative block h-full w-full overflow-hidden bg-ink/5 transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt ${pinned?.id === p.id ? "outline-2 outline-offset-4 outline-cobalt" : ""}`}
+              className={`group relative block h-full w-full overflow-hidden bg-ink/5 transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
-              <Image src={p.image} alt="" fill sizes="220px" draggable={false} className="object-cover transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110" />
+              <Image src={p.image} alt="" fill sizes="(max-width: 640px) 70vw, 40vw" draggable={false} className="object-cover transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110" />
             </button>
           </div>
         ))}
