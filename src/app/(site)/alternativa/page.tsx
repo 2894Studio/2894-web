@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { HomeView } from "@/components/HomeView";
+import { redirect } from "next/navigation";
 
-// Versión alternativa de la apertura para comparar: showreel con la frase abajo → cielo → busto, sin el logo.
-export const metadata: Metadata = { title: "2894_ Studio · versión alternativa", robots: { index: false } };
-
+// La versión alternativa pasó a ser la portada: los enlaces antiguos llevan al inicio.
 export default function Alternativa() {
-  return <HomeView variant="directo" />;
+  redirect("/");
 }

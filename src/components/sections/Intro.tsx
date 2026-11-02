@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CloudSky, SKY_DEFAULTS, type SkyControls } from "@/components/CloudSky";
 import { HeadFollow, type LookTarget } from "@/components/HeadFollow";
 import { ProjectSphere } from "@/components/ProjectSphere";
@@ -12,18 +12,13 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { SphereItem } from "@/lib/projects";
 
 // Apertura en una sola escena fijada y guiada por el scroll:
-// showreel con el cielo ya detrás → el vídeo queda recortado dentro de "2894" → aparece el "_" → logo blanco
-// sobre el cielo y, debajo, "Una nueva forma de diseñar" palabra a palabra → zoom out: el cielo era la frente
-// del busto (máscara con su silueta) y aparece el busto grande → espejo de la cámara → el busto se parte en las
-// tarjetas de la esfera → "PROYECTOS_".
-// Variante "directo" (alternativa): el showreel lleva "Una nueva forma de diseñar" abajo; al bajar, el vídeo se
-// retira y el cielo de detrás se convierte en el busto de inmediato, sin el paso por el logo.
-export type IntroVariant = "logo" | "directo";
-// Tramos de cada variante (fracciones del recorrido). track: alto en svh; at: la esfera ya está formada (#proyectos).
-const TIMING = {
-  logo: { track: 600, zoom: [0.27, 0.43], burst: [0.6, 0.8], title: [0.8, 0.88], at: 0.86 },
-  directo: { track: 480, zoom: [0.08, 0.26], burst: [0.44, 0.64], title: [0.64, 0.72], at: 0.7 },
-} as const;
+// showreel con el cielo ya detrás → al bajar, el vídeo se retira y el cielo se convierte de inmediato en el busto
+// (zoom out: el cielo era la frente del busto, máscara con su silueta) → "2894_ Studio" y la frase a los lados,
+// espejo de la cámara → el busto se parte en las tarjetas de la esfera → "PROYECTOS_".
+// Tramos (fracciones del recorrido). track: alto en svh; at: la esfera ya está formada (destino de #proyectos).
+const T = { track: 480, zoom: [0.08, 0.26], burst: [0.44, 0.64], title: [0.64, 0.72], at: 0.7 } as const;
+// Pausa al final: con "PROYECTOS_" ya formado, la escena sigue fijada este tramo antes de dar paso a la siguiente.
+const TAIL_SVH = 90;
 const IMG_W = 1063, IMG_H = 1518;
 const BBOX = [0.206, 0.108, 0.752, 0.882]; // figura dentro del PNG del busto
 const FOCUS = [0.5, 0.3]; // punto de la frente desde el que se aleja la cámara
@@ -42,34 +37,16 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 type CamState = "idle" | "asking" | "on" | "off";
 
-// "2894" y "_" en SVG: la misma geometría sirve de recorte del vídeo y de logo blanco, así nunca se desajustan.
-// (Dentro de <clipPath> no se admite <g>: cada texto lleva su propia transformación.)
-const GLYPH_STYLE = { fontWeight: 700, letterSpacing: "-0.05em" } as const;
-type GlyphRef = (el: SVGTextElement | null) => void;
-const Glyphs = ({ num, us, fill }: { num: GlyphRef; us: GlyphRef; fill?: string }) => (
-  <>
-    <text ref={num} fill={fill} style={GLYPH_STYLE}>2894</text>
-    <text ref={us} fill={fill} style={GLYPH_STYLE}>_</text>
-  </>
-);
-
-export function Intro({ items, variant = "logo" }: { items: SphereItem[]; variant?: IntroVariant }) {
+export function Intro({ items }: { items: SphereItem[] }) {
   const reduced = useReducedMotion();
   if (reduced) return <StaticIntro items={items} />;
-  return <ScrollIntro items={items} variant={variant} />;
+  return <ScrollIntro items={items} />;
 }
 
-function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVariant }) {
-  const T = TIMING[variant];
-  const direct = variant === "directo";
+function ScrollIntro({ items }: { items: SphereItem[] }) {
   const track = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sky = useRef<HTMLDivElement>(null);
-  const clipRect = useRef<SVGRectElement>(null);
-  const logoSvg = useRef<SVGSVGElement>(null);
-  const nums = useRef<(SVGTextElement | null)[]>([]);
-  const uss = useRef<(SVGTextElement | null)[]>([]);
-  const phrase = useRef<HTMLDivElement>(null);
   const sides = useRef<HTMLDivElement>(null);
   const mirrorVideo = useRef<HTMLDivElement>(null);
   const mirror = useRef<HTMLDivElement>(null);
@@ -83,7 +60,6 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
   const [skyOn, setSkyOn] = useState(false);
   const [cam, setCam] = useState<CamState>("idle");
   const camRef = useRef<{ state: CamState; tracker: FaceTracker | null; granted: boolean }>({ state: "idle", tracker: null, granted: false });
-  const clipId = `reel-clip-${useId().replace(/:/g, "")}`;
 
   // Cámara: se pide al aparecer el busto; si no hay permiso o soporte, el busto sigue al ratón o al dedo.
   const startCam = () => {
@@ -130,7 +106,7 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
     const st = stage.current, tr = track.current;
     if (!st || !tr) return;
     const camera = camRef.current;
-    let raf = 0, W = 0, H = 0, bh = 0, bw = 0, fs = 0, numW = 0, usW = 0, inView = true;
+    let raf = 0, W = 0, H = 0, bh = 0, bw = 0, inView = true;
 
     // Piezas del busto que vuelan a la esfera (cara A: trozo del busto; cara B: el proyecto).
     const ROWS = Math.ceil(items.length / COLS);
@@ -162,15 +138,8 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
         b.top = `${(H - bh) / 2}px`;
         b.transformOrigin = `${FOCUS[0] * bw}px ${FOCUS[1] * bh}px`;
       }
-      // Tamaño del logo (igual que clamp(6rem,27vw,30rem)) y anchos medidos de "2894" y "_".
-      fs = clamp(W * 0.27, 96, 480);
-      logoSvg.current?.setAttribute("viewBox", `0 0 ${W} ${H}`);
-      [...nums.current, ...uss.current].forEach((el) => el && (el.style.fontSize = `${fs}px`));
-      numW = nums.current[0]?.getComputedTextLength() ?? fs * 2.2;
-      usW = uss.current[0]?.getComputedTextLength() ?? fs * 0.5;
     };
     measure();
-    document.fonts?.ready.then(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(st);
     const io = new IntersectionObserver(([e]) => (inView = e.isIntersecting));
@@ -182,7 +151,8 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
     const frame = () => {
       raf = requestAnimationFrame(frame);
       const r = tr.getBoundingClientRect();
-      const p = clamp(-r.top / (r.height - window.innerHeight), 0, 1);
+      const active = (r.height - window.innerHeight) * ((T.track - 100) / (T.track + TAIL_SVH - 100));
+      const p = clamp(-r.top / active, 0, 1);
       const cx = W / 2, cy = H / 2;
 
       // 1 · Showreel: se enmarca con bordes redondeados y alrededor ya está el cielo.
@@ -191,31 +161,14 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
       const inset = a * clamp(W * 0.06, 24, 96);
       if (head) head.style.padding = `${inset}px`;
       if (fr) fr.style.borderRadius = `${a * 48}px`;
-      setReel({ active: inView && p < (direct ? 0.07 : 0.055) });
+      setReel({ active: inView && p < 0.07 });
 
-      // 2 · El vídeo queda recortado dentro de "2894": el marco se encoge hacia el centro mientras las letras
-      // (enormes al principio) bajan a su tamaño. Fuera de las letras se ve el cielo.
-      const clipOn = !direct && p > 0.05;
-      const rk = smooth(seg(p, 0.05, 0.1));
-      const shrink = easeOut(seg(p, 0.05, 0.12));
-      const sc = Math.exp(lerp(Math.log(2.6), 0, shrink));
-      const us = smooth(seg(p, 0.11, 0.15)); // aparece el guion y el número se recentra
-      // En la variante directa el vídeo se aleja y se apaga hacia el centro, dejando el cielo de detrás.
-      const videoOut = direct ? smooth(seg(p, 0.07, 0.13)) : smooth(seg(p, 0.12, 0.17));
-      const reelScale = direct ? lerp(1, 0.82, videoOut) : 1;
+      // 2 · El vídeo se aleja y se apaga hacia el centro, dejando el cielo de detrás.
+      const videoOut = smooth(seg(p, 0.07, 0.13));
       if (head) {
-        head.style.clipPath = clipOn ? `url(#${clipId})` : "";
         head.style.opacity = String(1 - videoOut);
-        head.style.transform = direct ? `scale(${reelScale})` : "";
+        head.style.transform = `scale(${lerp(1, 0.82, videoOut)})`;
         head.style.visibility = videoOut >= 1 ? "hidden" : "";
-      }
-      if (clipRect.current) {
-        const w = (W - 2 * inset) * (1 - rk), h = (H - 2 * inset) * (1 - rk);
-        clipRect.current.setAttribute("x", String(cx - w / 2));
-        clipRect.current.setAttribute("y", String(cy - h / 2));
-        clipRect.current.setAttribute("width", String(Math.max(w, 0)));
-        clipRect.current.setAttribute("height", String(Math.max(h, 0)));
-        clipRect.current.setAttribute("rx", String(48 * (1 - rk) + 24 * rk));
       }
 
       // 3 · Zoom out: el cielo es la frente del busto. La silueta (máscara) pasa de cubrir toda la pantalla
@@ -239,29 +192,6 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
       const skyVisible = p > 0.002 && k < 1;
       setSkyOn((v) => (v === skyVisible ? v : skyVisible));
 
-      // Logo: recorte del vídeo y, cuando el vídeo se apaga, el mismo logo en blanco; se aleja con el cielo.
-      const total = numW + usW * us;
-      const x0 = cx - total / 2, base = cy + fs * 0.35;
-      const logoIn = smooth(seg(p, 0.12, 0.17));
-      const logoOut = smooth(seg(k, 0.1, 0.45));
-      [0, 1].forEach((i) => {
-        // i 0 = recorte (escala del encogimiento); i 1 = logo blanco (se aleja con el cielo)
-        const z = i === 0 ? sc : s / s0;
-        const dx = i === 0 ? 0 : X - cx, dy = i === 0 ? 0 : Y - cy;
-        const G = `translate(${cx + dx} ${cy + dy}) scale(${z}) translate(${-cx} ${-cy})`;
-        const n = nums.current[i], u = uss.current[i];
-        n?.setAttribute("x", String(x0));
-        n?.setAttribute("y", String(base));
-        n?.setAttribute("transform", G);
-        if (u) {
-          const ux = x0 + numW;
-          u.setAttribute("x", String(ux));
-          u.setAttribute("y", String(base));
-          u.setAttribute("transform", `${G} translate(${ux} 0) scale(${Math.max(us, 0.0001)} 1) translate(${-ux} 0)`);
-        }
-      });
-      if (logoSvg.current) logoSvg.current.style.opacity = direct ? "0" : String(logoIn * (1 - logoOut));
-
       // 4 · La pintura del busto aparece encima del cielo con la misma escala y posición.
       const bustIn = smooth(seg(k, 0.55, 0.92));
       const burst = seg(p, T.burst[0], T.burst[1]);
@@ -273,28 +203,9 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
         // (solo a tamaño final: el filtro sobre el busto ampliado sería caro).
         bust.current.style.filter = s < 1.6 ? "drop-shadow(0 0 1px rgb(10 50 120 / 0.35)) drop-shadow(0 18px 36px rgb(11 11 13 / 0.12))" : "";
       }
-      // "Una nueva forma de diseñar" bajo el logo, palabra a palabra; se aleja con el logo en el zoom out.
-      if (phrase.current) {
-        const ph = phrase.current;
-        const line = ph.querySelector<HTMLElement>("[data-line]");
-        if (direct) {
-          // Alternativa: el vídeo va sin texto (la frase queda junto al busto).
-          ph.style.opacity = "0";
-          ph.style.transform = `scale(${reelScale})`;
-          if (line) line.style.top = `${H - inset - Math.max(H * 0.05, 24) - 72 - line.offsetHeight}px`; // por encima de la barra reproductor
-        } else {
-          ph.style.opacity = String(1 - logoOut);
-          ph.style.transform = `translate(${X - cx}px,${Y - cy}px) scale(${s / s0})`;
-          if (line) line.style.top = `${cy + fs * 0.35 + fs * 0.2}px`; // justo bajo la línea base del logo
-        }
-        ph.querySelectorAll<HTMLElement>("[data-word]").forEach((w, i) => {
-          const kk = direct ? easeOut(seg(p, 0.008 + i * 0.008, 0.03 + i * 0.008)) : easeOut(seg(p, 0.15 + i * 0.014, 0.19 + i * 0.014));
-          w.style.transform = `translateY(${150 * (1 - kk)}%)`; // 150 %: también oculta la tilde de la Ñ
-        });
-      }
       const gone = smooth(seg(p, T.burst[0] - 0.025, T.burst[0] + 0.005)); // todo se retira cuando el busto se parte
       if (mirror.current) mirror.current.style.opacity = String(smooth(seg(p, T.zoom[1] - 0.01, T.zoom[1] + 0.03)) * (1 - gone));
-      // La frase queda de forma sutil a los lados del busto.
+      // "2894_ Studio" y la frase, sutiles, a los lados del busto.
       if (sides.current) sides.current.style.opacity = String(smooth(seg(k, 0.85, 1)) * (1 - gone));
 
       // Cámara: se pide al terminar el zoom y se pausa fuera del tramo del busto.
@@ -354,26 +265,16 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
       camera.tracker?.stop();
       setReel({ active: false });
     };
-  }, [items, clipId, direct, T]);
+  }, [items]);
 
   const titleChars = "Proyectos_".split("");
 
   return (
-    <section ref={track} aria-label="Apertura" className="relative" style={{ height: `${T.track}svh` }}>
+    <section ref={track} aria-label="Apertura" className="relative" style={{ height: `${T.track + TAIL_SVH}svh` }}>
       {/* Anclas de navegación dentro del recorrido */}
       <div id="proyectos" data-anchor aria-hidden className="pointer-events-none absolute left-0 w-px" style={{ top: `${T.at * (T.track - 100)}svh` }} />
 
       <div ref={stage} className="sticky top-0 h-svh overflow-hidden bg-cloud">
-        {/* Recorte del vídeo: marco que se encoge + "2894_" */}
-        <svg aria-hidden width="0" height="0" className="absolute">
-          <defs>
-            <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
-              <rect ref={clipRect} />
-              <Glyphs num={(el) => void (nums.current[0] = el)} us={(el) => void (uss.current[0] = el)} />
-            </clipPath>
-          </defs>
-        </svg>
-
         {/* Cielo = la pintura del busto: siempre detrás del vídeo; su silueta se reduce en el zoom out */}
         <div
           ref={sky}
@@ -384,44 +285,16 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
           <CloudSky active={skyOn} lit={CLOUD_LIT} shade={CLOUD_SHADE} controls={skyCtrl} />
         </div>
 
-        {/* Showreel (recortado por el clip-path cuando entra en las letras) */}
+        {/* Showreel */}
         <Hero managed />
 
-        {/* Logo blanco sobre el cielo (misma geometría que el recorte) */}
-        <svg ref={logoSvg} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-0" preserveAspectRatio="none">
-          <Glyphs fill="#ffffff" num={(el) => void (nums.current[1] = el)} us={(el) => void (uss.current[1] = el)} />
-        </svg>
-
-        {/* "Una nueva forma de diseñar" bajo el logo */}
-        <div ref={phrase} className="pointer-events-none absolute inset-0 px-[var(--gutter)] text-cloud" style={{ transformOrigin: "50% 50%" }}>
-          <p className="sr-only">Una nueva forma de diseñar</p>
-          <p data-line aria-hidden className="absolute inset-x-[var(--gutter)] flex flex-wrap justify-center gap-x-[0.3em] text-center text-[clamp(1.4rem,4vw,3.4rem)] font-medium uppercase leading-none tracking-[-0.03em]">
-            {["Una", "nueva", "forma", "de", "diseñar"].map((w) => (
-              <span key={w} className="-mb-[0.12em] -mt-[0.24em] inline-block overflow-hidden pb-[0.12em] pt-[0.24em]">
-                <span data-word className="inline-block" style={{ transform: "translateY(150%)" }}>
-                  {w}
-                </span>
-              </span>
-            ))}
-          </p>
-        </div>
-
-        {/* La frase, sutil, a los lados del busto (en móvil, arriba) */}
+        {/* "2894_ Studio" y la frase, sutiles, a los lados del busto (en móvil, arriba) */}
+        <p className="sr-only">2894_ Studio. Una nueva forma de diseñar</p>
         <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[clamp(0.95rem,1.5vw,1.4rem)] font-medium uppercase tracking-[0.04em] text-ink/45 opacity-0">
-          {direct ? (
-            // Alternativa: el nombre del estudio a un lado y la frase al otro.
-            <>
-              <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">
-                2894<span className="blink">_</span> Studio
-              </span>
-              <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] max-w-[48%] text-right sm:top-1/2 sm:max-w-[min(30vw,22rem)] sm:-translate-y-1/2">Una nueva forma de diseñar</span>
-            </>
-          ) : (
-            <>
-              <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">Una nueva forma</span>
-              <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">de diseñar</span>
-            </>
-          )}
+          <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">
+            2894<span className="blink">_</span> Studio
+          </span>
+          <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] max-w-[48%] text-right sm:top-1/2 sm:max-w-[min(30vw,22rem)] sm:-translate-y-1/2">Una nueva forma de diseñar</span>
         </div>
 
         {/* Busto */}
