@@ -7,16 +7,14 @@ import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
 
 type Project = SphereItem;
-// Puntos repartidos con el mismo ángulo entre vecinos (nunca dos tarjetas en la misma dirección) y alturas
-// alternas en tres franjas, para que el conjunto respire y no se amontone.
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+// Puntos de la esfera (espiral de Fibonacci): altura fija y ángulo alrededor del eje vertical.
 const pointsFor = (n: number) =>
   Array.from({ length: n }, (_, i) => {
-    const band = [0.6, 0, -0.6][(i * 2) % 3]; // arriba, centro, abajo (orden alterno)
-    const y = n > 3 ? band : 0;
-    return { y, r: Math.sqrt(1 - y * y * 0.35), th: (i / n) * Math.PI * 2 };
+    const y = n > 1 ? 0.82 - (i / (n - 1)) * 1.64 : 0;
+    return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
   });
 const BASE_SPEED = 0.0024; // rad por frame
-const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 
 // Esfera de proyectos: gira solo sobre el eje vertical y cada imagen mira siempre al frente.
 // `controlled`: la aparición la hace otra pieza (la apertura, con las piezas del busto), así que las tarjetas
@@ -42,39 +40,28 @@ export function ProjectSphere({
   const [front, setFront] = useState(projects[0].title);
   const moved = useRef(false);
   const shown = pinned ?? hovered;
-  // Índice del proyecto seleccionado (hover o fijado): ese crece, el giro se detiene y los demás se atenúan.
-  const focusRef = useRef(-1);
-  useEffect(() => {
-    focusRef.current = shown ? projects.findIndex((p) => p.id === shown.id) : -1;
-  }, [shown, projects]);
 
   useEffect(() => {
     const el = stage.current;
     if (!el) return;
     const reduced = window.matchMedia(REDUCED).matches;
     const fine = window.matchMedia(FINE_POINTER).matches;
-    const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, Rx: 280, drag: false, lx: 0, frontIdx: 0 };
+    const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, drag: false, lx: 0, frontIdx: 0 };
     const POINTS = pointsFor(projects.length);
     const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
-    const em = projects.map(() => 0); // énfasis de cada tarjeta (0 normal, 1 seleccionada)
-    let dim = 0; // atenuación del resto mientras hay una seleccionada
 
     const resize = () => {
       s.R = Math.min(el.clientWidth * 0.4, 420);
-      s.Rx = s.R; // anillo compacto: no invade la zona del texto
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(el);
 
     const render = () => {
-      const focus = focusRef.current;
       if (!s.drag) {
         s.a += s.v;
-        // Con una seleccionada el giro se frena hasta pararse; si no, vuelve despacio al giro base.
-        s.v += ((reduced || focus >= 0 ? 0 : BASE_SPEED) - s.v) * (focus >= 0 ? 0.12 : 0.02);
+        s.v += ((reduced ? 0 : BASE_SPEED) - s.v) * 0.02; // vuelve despacio al giro base
       }
-      dim += ((focus >= 0 ? 1 : 0) - dim) * 0.14;
       let best = -2;
       POINTS.forEach((p, i) => {
         const c = cards.current[i];
@@ -88,19 +75,14 @@ export function ProjectSphere({
           s.frontIdx = i;
         }
         const depth = (z + 1) / 2; // 0 detrás, 1 delante
-        em[i] += ((i === focus ? 1 : 0) - em[i]) * 0.16;
-        const e = em[i];
-        const w = s.R * 0.36; // pequeñas; la seleccionada crece
-        const grow = 1 + e * 1.4;
+        const w = s.R * 0.36; // tarjetas pequeñas (referencia: gionatannese.com): dejan aire al título y a la reseña
         c.style.width = `${w}px`;
         c.style.height = `${w * 1.25}px`;
         c.style.marginLeft = `${-w / 2}px`;
         c.style.marginTop = `${-w * 0.625}px`;
-        c.style.transform = `translate3d(${x * s.Rx * k}px, ${-p.y * s.R * k}px, ${z * s.R * k}px) scale(${Math.min(1, k * 1.15) * (0.6 + depth * 0.4) * grow})`;
-        // Delante más nítido, detrás desvanecido; con una seleccionada, las demás pasan a segundo plano.
-        const base = 0.25 + depth * depth * 0.75;
-        c.style.opacity = String(Math.max(0, Math.min(1, k)) * lerpN(base, Math.max(base, 1) * (i === focus ? 1 : 0.28), dim));
-        c.style.zIndex = String(e > 0.05 ? 300 : Math.round(depth * 100));
+        c.style.transform = `translate3d(${x * s.R * k}px, ${-p.y * s.R * k}px, ${z * s.R * k}px) scale(${Math.min(1, k * 1.15) * (0.62 + depth * 0.38)})`;
+        c.style.opacity = String(Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75));
+        c.style.zIndex = String(Math.round(depth * 100));
         c.style.pointerEvents = z > -0.15 && k > 0.8 ? "auto" : "none";
       });
     };
