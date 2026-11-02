@@ -7,12 +7,13 @@ import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
 
 type Project = SphereItem;
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-// Puntos de la esfera (espiral de Fibonacci): altura fija y ángulo alrededor del eje vertical.
+// Puntos repartidos con el mismo ángulo entre vecinos (nunca dos tarjetas en la misma dirección) y alturas
+// alternas en tres franjas, para que el conjunto respire y no se amontone.
 const pointsFor = (n: number) =>
   Array.from({ length: n }, (_, i) => {
-    const y = n > 1 ? 0.82 - (i / (n - 1)) * 1.64 : 0;
-    return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
+    const band = [0.74, 0, -0.74][(i * 2) % 3]; // arriba, centro, abajo (orden alterno)
+    const y = n > 3 ? band : 0;
+    return { y, r: Math.sqrt(1 - y * y * 0.35), th: (i / n) * Math.PI * 2 };
   });
 const BASE_SPEED = 0.0024; // rad por frame
 
@@ -46,12 +47,15 @@ export function ProjectSphere({
     if (!el) return;
     const reduced = window.matchMedia(REDUCED).matches;
     const fine = window.matchMedia(FINE_POINTER).matches;
-    const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, drag: false, lx: 0, frontIdx: 0 };
+    const s = { a: 0, v: reduced ? 0 : BASE_SPEED, R: 280, Rx: 280, drag: false, lx: 0, frontIdx: 0 };
     const POINTS = pointsFor(projects.length);
     const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
 
     const resize = () => {
       s.R = Math.min(el.clientWidth * 0.4, 420);
+      // En pantallas anchas el anillo se abre en horizontal (elipse) para aprovechar el ancho.
+      const vw = window.innerWidth;
+      s.Rx = vw >= 900 ? Math.min(vw * 0.32, s.R * 1.9) : s.R;
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -75,13 +79,14 @@ export function ProjectSphere({
           s.frontIdx = i;
         }
         const depth = (z + 1) / 2; // 0 detrás, 1 delante
-        const w = s.R * 0.5;
+        const w = s.R * (s.Rx > s.R ? 0.5 : 0.62);
         c.style.width = `${w}px`;
         c.style.height = `${w * 1.25}px`;
         c.style.marginLeft = `${-w / 2}px`;
         c.style.marginTop = `${-w * 0.625}px`;
-        c.style.transform = `translate3d(${x * s.R * k}px, ${-p.y * s.R * k}px, ${z * s.R * k}px) scale(${Math.min(1, k * 1.15) * (0.62 + depth * 0.38)})`;
-        c.style.opacity = String(Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75));
+        c.style.transform = `translate3d(${x * s.Rx * k}px, ${-p.y * s.R * k}px, ${z * s.R * k}px) scale(${Math.min(1, k * 1.15) * (0.5 + depth * 0.5)})`;
+        // Delante: nítido y grande; detrás: más pequeño y desvanecido (jerarquía clara de peso).
+        c.style.opacity = String(Math.max(0, Math.min(1, k)) * (0.18 + depth * depth * 0.82));
         c.style.zIndex = String(Math.round(depth * 100));
         c.style.pointerEvents = z > -0.15 && k > 0.8 ? "auto" : "none";
       });

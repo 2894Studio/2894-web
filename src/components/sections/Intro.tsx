@@ -468,7 +468,7 @@ function ScrollIntro({ items, variant }: { items: SphereItem[]; variant: IntroVa
               ))}
             </span>
           </h2>
-          <div className="relative mt-2 flex-1 lg:px-[var(--gutter)]">
+          <div className="relative mt-2 flex flex-1 flex-col justify-center pb-[12svh] lg:px-[var(--gutter)] lg:pb-0">
             <ProjectSphere items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
           </div>
         </div>
