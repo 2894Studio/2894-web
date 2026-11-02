@@ -138,6 +138,16 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
         b.top = `${(H - bh) / 2}px`;
         b.transformOrigin = `${FOCUS[0] * bw}px ${FOCUS[1] * bh}px`;
       }
+      // Textos laterales pegados al contorno del busto, con un margen prudente y centrados en su altura.
+      const l = sides.current?.querySelector<HTMLElement>('[data-side="l"]'), rgt = sides.current?.querySelector<HTMLElement>('[data-side="r"]');
+      if (l && rgt) {
+        const wide = W >= 640;
+        const gap = clamp(W * 0.03, 24, 56);
+        const figL = (W - bw) / 2 + BBOX[0] * bw, figR = (W - bw) / 2 + BBOX[2] * bw;
+        const figCy = (H - bh) / 2 + ((BBOX[1] + BBOX[3]) / 2) * bh;
+        Object.assign(l.style, wide ? { left: "auto", right: `${W - figL + gap}px`, top: `${figCy}px`, transform: "translateY(-50%)" } : { left: "", right: "", top: "", transform: "" });
+        Object.assign(rgt.style, wide ? { right: "auto", left: `${figR + gap}px`, top: `${figCy}px`, transform: "translateY(-50%)" } : { left: "", right: "", top: "", transform: "" });
+      }
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -290,11 +300,18 @@ function ScrollIntro({ items }: { items: SphereItem[] }) {
 
         {/* "2894_ Studio" y la frase, sutiles, a los lados del busto (en móvil, arriba) */}
         <p className="sr-only">2894_ Studio. Una nueva forma de diseñar</p>
-        <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[clamp(0.95rem,1.5vw,1.4rem)] font-medium uppercase tracking-[0.04em] text-ink/45 opacity-0">
-          <span className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] sm:top-1/2 sm:-translate-y-1/2">
-            2894<span className="blink">_</span> Studio
+        <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] text-ink/55 opacity-0 sm:text-xs">
+          {/* En móvil van arriba; desde sm se colocan junto al contorno del busto (ver measure). */}
+          <span data-side="l" className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] block sm:text-right">
+            2894<span className="blink">_</span>
+            <br />
+            Studio
           </span>
-          <span className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] max-w-[48%] text-right sm:top-1/2 sm:max-w-[min(30vw,22rem)] sm:-translate-y-1/2">Una nueva forma de diseñar</span>
+          <span data-side="r" className="absolute right-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] block text-right sm:text-left">
+            Una nueva forma
+            <br />
+            de diseñar
+          </span>
         </div>
 
         {/* Busto */}
