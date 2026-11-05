@@ -18,6 +18,57 @@ const BASE_SPEED = 0.0024; // rad por frame
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothE = (t: number) => t * t * (3 - 2 * t);
 
+// Contenido de una tarjeta: la portada y, al pasar el ratón (o con la tarjeta abierta), el pase de todas las
+// fotos del proyecto a ~8 fotos/s, como un vídeo; en proyectos de vídeo, el vídeo sin sonido.
+const FRAME_MS = 125;
+const SIZES = "(max-width: 640px) 70vw, 40vw";
+function CardMedia({ item, active }: { item: Project; active: boolean }) {
+  const [tick, setTick] = useState(0);
+  const [warm, setWarm] = useState(false); // las fotos del pase se cargan la primera vez que se activa
+  if (active && !warm) setWarm(true);
+  const video = useRef<HTMLVideoElement>(null);
+  const reduced = typeof window !== "undefined" && window.matchMedia(REDUCED).matches;
+  const animate = active && !reduced;
+  const frames = item.frames.length > 1 ? item.frames : [];
+
+  useEffect(() => {
+    if (!animate || item.video || frames.length < 2) return;
+    const t = setInterval(() => setTick((n) => n + 1), FRAME_MS);
+    return () => clearInterval(t);
+  }, [animate, item.video, frames.length]);
+
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    if (animate) v.play().catch(() => {});
+    else v.pause();
+  }, [animate]);
+
+  const shown = animate && frames.length ? frames[tick % frames.length] : null;
+  return (
+    <>
+      {item.image && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
+      {warm && !item.video &&
+        frames.map((src) => (
+          <Image key={src} src={src} alt="" fill sizes={SIZES} draggable={false} className={`object-cover ${shown === src ? "opacity-100" : "opacity-0"}`} />
+        ))}
+      {item.video && (
+        <video
+          ref={video}
+          src={item.video}
+          poster={item.image || undefined}
+          muted
+          loop
+          playsInline
+          preload={item.image ? "none" : "metadata"}
+          aria-hidden
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${animate || !item.image ? "opacity-100" : "opacity-0"}`}
+        />
+      )}
+    </>
+  );
+}
+
 // Esfera de proyectos: gira solo sobre el eje vertical y cada imagen mira siempre al frente.
 // `controlled`: la aparición la hace otra pieza (la apertura, con las piezas del busto), así que las tarjetas
 // están colocadas desde el principio; `cardsRef` expone sus elementos para que esa pieza vuele hasta ellas.
@@ -226,10 +277,11 @@ export function ProjectSphere({
               aria-pressed={pinned?.id === p.id}
               onPointerEnter={() => setHovered(p)}
               onFocus={() => setHovered(p)}
+              onBlur={() => setHovered((h) => (h?.id === p.id ? null : h))}
               onClick={() => !moved.current && setPinned((cur) => (cur?.id === p.id ? null : p))}
               className={`group relative block h-full w-full overflow-hidden bg-ink/5 transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
-              <Image src={p.image} alt="" fill sizes="(max-width: 640px) 70vw, 40vw" draggable={false} className="object-cover transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110" />
+              <CardMedia item={p} active={hovered?.id === p.id || pinned?.id === p.id} />
             </button>
           </div>
         ))}

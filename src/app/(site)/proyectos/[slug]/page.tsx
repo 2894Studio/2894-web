@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { Logo } from "@/components/Logo";
+import { ProjectCarousel } from "@/components/ProjectCarousel";
 import { getProject, getProjects } from "@/lib/projects";
 
 export async function generateStaticParams() {
@@ -13,11 +15,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return p ? { title: `${p.title} · 2894_ Studio`, description: p.summary } : {};
 }
 
-// Página de caso: portada, datos, texto y galería (imágenes y vídeos), todo editable desde /studio.
+// Página de caso: portada (imagen o vídeo), datos, texto y carrusel opcional, todo desde la carpeta del proyecto en Drive.
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const p = await getProject((await params).slug);
   if (!p) notFound();
-  const meta = [p.client, p.year, ...p.categories].filter(Boolean).join(" · ");
+  const meta = [p.client, p.year, p.category].filter(Boolean).join(" · ");
   return (
     <main className="min-h-svh bg-cloud px-[var(--gutter)] pb-24 pt-8 text-ink">
       <nav aria-label="Volver" className="flex items-center justify-between">
@@ -35,35 +37,23 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         {p.summary && <p className="mt-6 max-w-2xl text-xl">{p.summary}</p>}
       </header>
 
-      <figure className="mt-12 overflow-hidden rounded-3xl bg-ink/5">
-        {p.video ? (
-          <video src={p.video} poster={p.cover.url} controls playsInline className="aspect-video w-full object-cover" />
+      <figure className="relative mt-12 overflow-hidden rounded-3xl bg-ink/5" style={{ aspectRatio: p.cover.width && p.cover.height && p.cover.width > p.cover.height ? `${p.cover.width} / ${p.cover.height}` : "16 / 9" }}>
+        {p.cover.kind === "video" ? (
+          <video src={p.cover.src} poster={p.cover.poster} autoPlay muted loop playsInline controls preload="metadata" className="h-full w-full object-cover" />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.cover.url} alt={p.cover.alt} className="aspect-[16/9] w-full object-cover" />
+          <Image src={p.cover.src} alt={p.cover.alt} fill priority sizes="100vw" className="object-cover" />
         )}
       </figure>
 
-      {p.body.length > 0 && (
-        <div className="mt-12 max-w-2xl space-y-5 text-lg leading-relaxed">
-          {p.body.map((t, i) => (
-            <p key={i}>{t}</p>
-          ))}
-        </div>
+      {p.bodyHtml && (
+        <div
+          className="mt-12 max-w-2xl text-lg leading-relaxed [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-cobalt [&_h2]:mt-12 [&_h2]:text-3xl [&_h2]:font-light [&_h2]:uppercase [&_h2]:tracking-tight [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-medium [&_li]:mt-2 [&_ol]:mt-5 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-5 [&_ul]:mt-5 [&_ul]:list-disc [&_ul]:pl-6"
+          // Texto de la Ficha de Drive, ya reducido a etiquetas seguras (src/lib/ficha.ts).
+          dangerouslySetInnerHTML={{ __html: p.bodyHtml }}
+        />
       )}
 
-      {p.gallery.length > 0 && (
-        <section aria-label="Galería" className="mt-16 grid gap-4 sm:grid-cols-2">
-          {p.gallery.map((m, i) =>
-            m.type === "video" ? (
-              <video key={i} src={m.url} controls playsInline className="aspect-video w-full rounded-2xl object-cover" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={m.url} alt={m.alt ?? ""} loading="lazy" className="w-full rounded-2xl object-cover" />
-            ),
-          )}
-        </section>
-      )}
+      {p.carousel.length > 0 && <ProjectCarousel items={p.carousel} title={p.title} />}
 
       {p.link && (
         <a href={p.link} target="_blank" rel="noreferrer" className="spring mt-12 inline-flex min-h-12 items-center rounded-full bg-cobalt px-6 font-medium text-cloud hover:bg-ink">

@@ -1,64 +1,115 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { createClient } from "next-sanity";
-import { apiVersion, dataset, projectId, sanityReady } from "../../sanity/env";
 import { stock } from "@/content/stock";
+import { driveReady, exportDoc, FOLDER, GDOC, listFolder, rootFolder, type DriveFile } from "@/lib/drive";
+import { bodyFromHtml, folderInfo, mediaKind, parseFields, pickCover } from "@/lib/ficha";
 
-// Proyectos del estudio. Si Sanity está conectado se leen de allí (el equipo los edita en /studio);
-// si no, se usan estos de ejemplo. La web se regenera sola cuando Sanity avisa de un cambio (/api/revalidate).
-export type Media = { type: "image" | "video"; url: string; alt?: string };
+// Proyectos del estudio. Se leen de Google Drive (una carpeta por proyecto, ver docs/drive-cms.md);
+// sin Drive configurado, o si falla, se muestran estos de ejemplo. Se refrescan solos cada hora o al
+// abrir /api/revalidate?secret=… ("Publicar cambios").
+export type Media = { kind: "image" | "video"; src: string; poster?: string; width?: number; height?: number; alt: string };
 export type ProjectEntry = {
   slug: string;
   title: string;
+  category: string;
   client?: string;
   year?: number;
-  categories: string[];
   summary: string;
-  cover: { url: string; alt: string };
-  video?: string;
-  gallery: Media[];
-  body: string[];
   link?: string;
+  cover: Media;
+  media: Media[]; // todas las fotos y vídeos del proyecto, en orden (la portada primero)
+  carousel: Media[]; // carrusel opcional bajo el texto (carpeta "Carrusel")
+  bodyHtml: string;
 };
 
-const sample = (slug: string, title: string, categories: string[], i: number, client?: string): ProjectEntry => ({
-  slug,
-  title,
-  client,
-  categories,
-  // TODO: el equipo sustituye este texto desde /studio
-  summary: "Texto de ejemplo: qué se pidió, cómo lo abordamos y qué cambió para el equipo.",
-  cover: { url: stock[i].src, alt: stock[i].title },
-  gallery: [],
-  body: ["Texto de ejemplo del caso. Se edita desde el panel de contenidos."],
-});
-
+const img = (i: number, alt: string): Media => {
+  const s = stock[i % stock.length];
+  return { kind: "image", src: s.src, width: s.w, height: s.h, alt };
+};
+// TODO: contenido de ejemplo; el equipo lo sustituye desde Drive.
+const sample = (slug: string, title: string, category: string, i: number, client?: string): ProjectEntry => {
+  const media = [0, 3, 7, 11, 15].map((k) => img(i + k, title));
+  return {
+    slug,
+    title,
+    category,
+    client,
+    summary: "Texto de ejemplo: qué se pidió, cómo lo abordamos y qué cambió para el equipo.",
+    cover: media[0],
+    media,
+    carousel: i % 2 === 0 ? media.slice(1) : [],
+    bodyHtml: "<p>Texto de ejemplo del caso. Se edita en la Ficha del proyecto en Google Drive.</p>",
+  };
+};
 const LOCAL: ProjectEntry[] = [
-  sample("dproma", "Dproma", ["Research", "Diseño de servicio"], 0, "DPROMA"),
-  sample("scamper", "Scamper", ["Herramienta", "IA aplicada"], 1),
-  sample("pills", "Pills", ["Formación", "Contenido"], 2),
-  sample("site-microinteracciones", "Site de Microinteracciones", ["Web", "Interacción"], 3),
-  sample("storyboard-zara-home", "Storyboard en vídeo para Zara Home", ["Vídeo", "IA generativa"], 4, "Zara Home"),
-  sample("formaciones", "Formaciones", ["Formación", "Alfabetización en IA"], 5),
-  sample("site-ideacion", "Site de Ideación para proyectos creativos", ["Web", "Ideación"], 6),
+  sample("dproma", "Dproma", "Research", 0, "DPROMA"),
+  sample("scamper", "Scamper", "Herramienta", 1),
+  sample("pills", "Pills", "Formación", 2),
+  sample("site-microinteracciones", "Site de Microinteracciones", "Web", 3),
+  sample("storyboard-zara-home", "Storyboard en vídeo para Zara Home", "Vídeo", 4, "Zara Home"),
+  sample("formaciones", "Formaciones", "Formación", 5),
+  sample("site-ideacion", "Site de Ideación para proyectos creativos", "Web", 6),
 ];
 
-const QUERY = `*[_type == "project" && defined(slug.current)] | order(order asc, _createdAt desc){
-  "slug": slug.current, title, client, year, "categories": coalesce(categories, []), "summary": coalesce(summary, ""),
-  "cover": { "url": cover.asset->url, "alt": coalesce(title, "") }, "video": video.asset->url,
-  "gallery": coalesce(gallery[]{ "type": select(_type == "galleryVideo" => "video", "image"), "url": asset->url, alt }, []),
-  "body": coalesce(body[_type == "block"]{ "t": pt::text(@) }.t, []), link
-}`;
+// Las imágenes y vídeos se sirven a través de /api/drive (la carpeta es privada). La versión (fecha de
+// modificación) va en la ruta: si el archivo cambia en Drive, cambia la URL y no se ve el antiguo en caché.
+const version = (f: DriveFile) => Date.parse(f.modifiedTime || "0").toString(36);
+function toMedia(f: DriveFile, alt: string): Media | null {
+  const kind = mediaKind(f.mimeType);
+  if (!kind) return null;
+  const base = `/api/drive/${f.id}/${version(f)}`;
+  const meta = kind === "image" ? f.imageMediaMetadata : f.videoMediaMetadata;
+  return { kind, src: base, poster: kind === "video" && f.thumbnailLink ? `${base}/poster` : undefined, width: meta?.width, height: meta?.height, alt };
+}
+
+async function readProject(folder: DriveFile) {
+  const info = folderInfo(folder.name);
+  const files = await listFolder(folder.id);
+  const ficha = files.find((f) => f.mimeType === GDOC && /^(ficha|info|texto)/i.test(f.name.trim())) ?? files.find((f) => f.mimeType === GDOC);
+  const [plain, html] = ficha ? await Promise.all([exportDoc(ficha.id, "text/plain"), exportDoc(ficha.id, "text/html")]) : ["", ""];
+  const fields = parseFields(plain);
+  const title = fields.title ?? info.label;
+
+  const own = files.filter((f) => mediaKind(f.mimeType)).map((f) => ({ f, id: f.id, name: f.name, kind: mediaKind(f.mimeType)! }));
+  const coverFile = pickCover(own);
+  if (!coverFile) return null; // sin imágenes ni vídeos no se publica
+  const ordered = [coverFile, ...own.filter((m) => m !== coverFile)];
+  const media = ordered.map((m) => toMedia(m.f, title)).filter((m): m is Media => !!m);
+
+  const carouselFolder = files.find((f) => f.mimeType === FOLDER && /^carrusel|^carousel/i.test(f.name.trim()));
+  const carousel = carouselFolder
+    ? (await listFolder(carouselFolder.id)).map((f) => toMedia(f, title)).filter((m): m is Media => !!m)
+    : [];
+
+  const entry: ProjectEntry = {
+    slug: info.slug || folder.id,
+    title,
+    category: fields.category ?? "",
+    client: fields.client,
+    year: fields.year,
+    summary: fields.summary ?? "",
+    link: fields.link,
+    cover: media[0],
+    media,
+    carousel,
+    bodyHtml: html ? bodyFromHtml(html) : "",
+  };
+  return { order: info.order, entry };
+}
 
 export async function getProjects(): Promise<ProjectEntry[]> {
   "use cache";
   cacheTag("projects");
   cacheLife("hours");
-  if (!sanityReady) return LOCAL;
+  if (!driveReady()) return LOCAL;
   try {
-    const client = createClient({ projectId, dataset, apiVersion, useCdn: true });
-    const list = await client.fetch<ProjectEntry[]>(QUERY);
+    // Carpetas de proyecto; las que empiezan por "_" (borradores) no se publican.
+    const folders = (await listFolder(rootFolder())).filter((f) => f.mimeType === FOLDER && !f.name.trim().startsWith("_"));
+    const read = (await Promise.all(folders.map(readProject))).filter((x) => x !== null);
+    read.sort((a, b) => a.order - b.order);
+    const list = read.map((x) => x.entry);
     return list.length ? list : LOCAL;
-  } catch {
+  } catch (e) {
+    console.error("Proyectos desde Drive:", e);
     return LOCAL;
   }
 }
@@ -67,12 +118,27 @@ export async function getProject(slug: string) {
   return (await getProjects()).find((p) => p.slug === slug) ?? null;
 }
 
-// Lo que necesita la esfera de la portada.
-export type SphereItem = { id: string; title: string; category: string; image: string; review: string };
-export const toSphere = (p: ProjectEntry): SphereItem => ({
-  id: p.slug,
-  title: p.title,
-  category: p.categories[0] ?? "",
-  image: p.cover.url,
-  review: p.summary,
-});
+// Lo que necesita la esfera: portada, fotos para el pase al pasar el ratón y, si es de vídeo, el vídeo.
+export type SphereItem = {
+  id: string;
+  title: string;
+  category: string;
+  image: string; // imagen de portada (o póster del vídeo)
+  frames: string[]; // fotos del proyecto para el pase "como vídeo"
+  video?: string; // vídeo que se reproduce al pasar el ratón (proyectos de vídeo)
+  review: string;
+};
+export const toSphere = (p: ProjectEntry): SphereItem => {
+  const images = p.media.filter((m) => m.kind === "image").map((m) => m.src);
+  const firstVideo = p.media.find((m) => m.kind === "video");
+  const videoProject = p.cover.kind === "video" || images.length === 0;
+  return {
+    id: p.slug,
+    title: p.title,
+    category: p.category,
+    image: p.cover.kind === "image" ? p.cover.src : (p.cover.poster ?? images[0] ?? ""),
+    frames: images.slice(0, 24),
+    video: videoProject ? (p.cover.kind === "video" ? p.cover.src : firstVideo?.src) : undefined,
+    review: p.summary,
+  };
+};

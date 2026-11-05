@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
     : {
         cacheComponents: true,
         partialPrefetching: true,
-        // Imágenes de los proyectos subidas a Sanity.
-        images: { remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io" }] },
+        // Imágenes locales y las de los proyectos, servidas desde Drive por /api/drive/<id>/<versión>.
+        images: { localPatterns: [{ pathname: "/stock/**" }, { pathname: "/brand/**" }, { pathname: "/api/drive/**" }] },
       }),
   turbopack: {
     rules: {
