@@ -43,17 +43,22 @@ La web vuelve a leer Drive sola cada hora. Para verlos al momento, abre (y guard
 
 `https://<dominio>/api/revalidate?secret=<REVALIDATE_SECRET>`
 
-## 3. Conexión (una sola vez)
+## 3. Conexión (una sola vez, sin Google Cloud ni tarjeta)
 
-1. Entra en https://console.cloud.google.com con la cuenta del estudio y crea un proyecto (por ejemplo, `2894-web`).
-2. **APIs y servicios → Biblioteca** → busca **Google Drive API** → **Habilitar**.
-3. **IAM y administración → Cuentas de servicio → Crear cuenta de servicio** (nombre: `web`). No hace falta darle roles.
-4. Abre la cuenta creada → **Claves → Agregar clave → Crear clave nueva → JSON**. Se descarga un archivo `.json`: guárdalo en un sitio seguro y no lo compartas.
-5. En Drive, comparte la carpeta `2894_ Proyectos` con el email de la cuenta de servicio (termina en `iam.gserviceaccount.com`) como **Lector**.
-6. En Vercel → proyecto **2894-web** → **Settings → Environment Variables**, añade (para Production y Preview):
-   - `GOOGLE_SERVICE_ACCOUNT_JSON`: el contenido completo del archivo `.json`.
-   - `DRIVE_PROJECTS_FOLDER_ID`: el id de la carpeta (lo que va después de `/folders/` en su dirección).
+La web lee Drive con un **Apps Script**: un pequeño programa gratuito que se publica con la misma cuenta de Gmail del estudio.
+
+1. Entra en https://script.google.com con la cuenta del estudio → **Proyecto nuevo**. Ponle de nombre `2894_ web`.
+2. Borra lo que haya y pega el contenido de `docs/drive-apps-script.gs` (en la carpeta de Drive hay un documento "Script de conexión" con la clave y el id ya rellenados).
+3. Arriba, elige la función **probar** → **Ejecutar**. La primera vez Google pide permiso para leer tu Drive: **Revisar permisos** → tu cuenta → *Configuración avanzada* → *Ir a 2894_ web* → **Permitir**. En el registro debe salir la lista de proyectos.
+4. **Implementar → Nueva implementación** → tipo **Aplicación web** → *Ejecutar como*: **yo** · *Quién tiene acceso*: **Cualquier usuario** → **Implementar**. Copia la **URL de la aplicación web** (termina en `/exec`).
+5. En Vercel → proyecto **2894-web** → **Settings → Environment Variables**, añade (Production y Preview):
+   - `DRIVE_SCRIPT_URL`: la URL del paso 4.
+   - `DRIVE_SCRIPT_KEY`: la clave que aparece en el script (`KEY`).
    - `REVALIDATE_SECRET`: una palabra larga inventada (para el enlace "Publicar cambios").
-7. Vuelve a desplegar (Deployments → ⋯ → Redeploy).
+6. Vuelve a desplegar (Deployments → ⋯ → Redeploy).
+
+**Privacidad:** la carpeta sigue privada. El script comparte "por enlace" solo las fotos y vídeos de los proyectos publicados (para que la web pueda mostrarlos); las Fichas y las carpetas que empiezan por `_` no se comparten. Si pasas un proyecto a borrador, sus fotos ya compartidas siguen accesibles con su enlace (imposible de adivinar); para retirarlas del todo, quita el permiso "cualquiera con el enlace" en Drive.
+
+**Si cambias el script** (o la clave): Implementar → Gestionar implementaciones → editar → *Nueva versión*. La URL no cambia.
 
 Mientras no estén estas variables, la web muestra los proyectos de ejemplo.

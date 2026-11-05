@@ -70,13 +70,13 @@ export function ProjectCarousel({ items, title }: { items: Media[]; title: strin
             role="group"
             aria-roledescription="diapositiva"
             aria-label={`${i + 1} de ${items.length}`}
-            className="relative h-[min(70svh,52rem)] shrink-0 snap-start overflow-hidden rounded-2xl bg-ink/5"
-            style={{ aspectRatio: m.width && m.height ? `${m.width} / ${m.height}` : "4 / 3" }}
+            className={`relative h-[min(70svh,52rem)] shrink-0 snap-start overflow-hidden rounded-2xl bg-ink/5 ${m.kind === "video" ? "aspect-video" : ""}`}
           >
             {m.kind === "video" ? (
               <video src={m.src} poster={m.poster} muted loop playsInline controls preload="metadata" className="h-full w-full object-cover" />
             ) : (
-              <Image src={m.src} alt={`${m.alt} (${i + 1} de ${items.length})`} fill sizes="(max-width: 640px) 90vw, 60vw" className="object-cover" />
+              // Cada foto con su proporción natural (alto fijo, ancho automático).
+              <Image src={m.src} alt={`${m.alt} (${i + 1} de ${items.length})`} width={m.width ?? 1600} height={m.height ?? 1200} sizes="(max-width: 640px) 90vw, 60vw" className="h-full w-auto max-w-[85vw] object-cover" />
             )}
           </figure>
         ))}

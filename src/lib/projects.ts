@@ -1,12 +1,12 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { stock } from "@/content/stock";
-import { driveReady, exportDoc, FOLDER, GDOC, listFolder, rootFolder, type DriveFile } from "@/lib/drive";
+import { driveReady, fetchCatalog, type CatalogFile, type CatalogProject } from "@/lib/drive";
 import { bodyFromHtml, folderInfo, mediaKind, parseFields, pickCover } from "@/lib/ficha";
 
-// Proyectos del estudio. Se leen de Google Drive (una carpeta por proyecto, ver docs/drive-cms.md);
+// Proyectos del estudio. Se leen de Google Drive a través del Apps Script (una carpeta por proyecto, ver docs/drive-cms.md);
 // sin Drive configurado, o si falla, se muestran estos de ejemplo. Se refrescan solos cada hora o al
 // abrir /api/revalidate?secret=… ("Publicar cambios").
-export type Media = { kind: "image" | "video"; src: string; poster?: string; width?: number; height?: number; alt: string };
+export type Media = { kind: "image" | "video"; src: string; mime?: string; poster?: string; width?: number; height?: number; alt: string };
 export type ProjectEntry = {
   slug: string;
   title: string;
@@ -50,38 +50,30 @@ const LOCAL: ProjectEntry[] = [
   sample("site-ideacion", "Site de Ideación para proyectos creativos", "Web", 6),
 ];
 
-// Las imágenes y vídeos se sirven a través de /api/drive (la carpeta es privada). La versión (fecha de
-// modificación) va en la ruta: si el archivo cambia en Drive, cambia la URL y no se ve el antiguo en caché.
-const version = (f: DriveFile) => Date.parse(f.modifiedTime || "0").toString(36);
-function toMedia(f: DriveFile, alt: string): Media | null {
+// Las imágenes y vídeos se sirven a través de /api/drive/<id>/<versión>. La versión (fecha de modificación) va en
+// la ruta: si el archivo cambia en Drive, cambia la URL y no se ve el antiguo en caché.
+const version = (f: CatalogFile) => Date.parse(f.modifiedTime || "0").toString(36);
+const byName = (a: CatalogFile, b: CatalogFile) => a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" });
+function toMedia(f: CatalogFile, alt: string): Media | null {
   const kind = mediaKind(f.mimeType);
   if (!kind) return null;
   const base = `/api/drive/${f.id}/${version(f)}`;
-  const meta = kind === "image" ? f.imageMediaMetadata : f.videoMediaMetadata;
-  return { kind, src: base, poster: kind === "video" && f.thumbnailLink ? `${base}/poster` : undefined, width: meta?.width, height: meta?.height, alt };
+  return { kind, src: base, mime: f.mimeType, poster: kind === "video" ? `${base}/poster` : undefined, alt };
 }
 
-async function readProject(folder: DriveFile) {
-  const info = folderInfo(folder.name);
-  const files = await listFolder(folder.id);
-  const ficha = files.find((f) => f.mimeType === GDOC && /^(ficha|info|texto)/i.test(f.name.trim())) ?? files.find((f) => f.mimeType === GDOC);
-  const [plain, html] = ficha ? await Promise.all([exportDoc(ficha.id, "text/plain"), exportDoc(ficha.id, "text/html")]) : ["", ""];
-  const fields = parseFields(plain);
+function readProject(p: CatalogProject) {
+  const info = folderInfo(p.name);
+  const fields = parseFields(p.ficha?.plain ?? "");
   const title = fields.title ?? info.label;
 
-  const own = files.filter((f) => mediaKind(f.mimeType)).map((f) => ({ f, id: f.id, name: f.name, kind: mediaKind(f.mimeType)! }));
+  const own = [...p.files].sort(byName).map((f) => ({ f, id: f.id, name: f.name, kind: mediaKind(f.mimeType) })).filter((m) => m.kind) as { f: CatalogFile; id: string; name: string; kind: "image" | "video" }[];
   const coverFile = pickCover(own);
   if (!coverFile) return null; // sin imágenes ni vídeos no se publica
-  const ordered = [coverFile, ...own.filter((m) => m !== coverFile)];
-  const media = ordered.map((m) => toMedia(m.f, title)).filter((m): m is Media => !!m);
-
-  const carouselFolder = files.find((f) => f.mimeType === FOLDER && /^carrusel|^carousel/i.test(f.name.trim()));
-  const carousel = carouselFolder
-    ? (await listFolder(carouselFolder.id)).map((f) => toMedia(f, title)).filter((m): m is Media => !!m)
-    : [];
+  const media = [coverFile, ...own.filter((m) => m !== coverFile)].map((m) => toMedia(m.f, title)).filter((m): m is Media => !!m);
+  const carousel = [...p.carousel].sort(byName).map((f) => toMedia(f, title)).filter((m): m is Media => !!m);
 
   const entry: ProjectEntry = {
-    slug: info.slug || folder.id,
+    slug: info.slug || p.id,
     title,
     category: fields.category ?? "",
     client: fields.client,
@@ -91,7 +83,7 @@ async function readProject(folder: DriveFile) {
     cover: media[0],
     media,
     carousel,
-    bodyHtml: html ? bodyFromHtml(html) : "",
+    bodyHtml: p.ficha?.html ? bodyFromHtml(p.ficha.html) : "",
   };
   return { order: info.order, entry };
 }
@@ -102,9 +94,8 @@ export async function getProjects(): Promise<ProjectEntry[]> {
   cacheLife("hours");
   if (!driveReady()) return LOCAL;
   try {
-    // Carpetas de proyecto; las que empiezan por "_" (borradores) no se publican.
-    const folders = (await listFolder(rootFolder())).filter((f) => f.mimeType === FOLDER && !f.name.trim().startsWith("_"));
-    const read = (await Promise.all(folders.map(readProject))).filter((x) => x !== null);
+    // El script ya omite las carpetas que empiezan por "_" (borradores).
+    const read = (await fetchCatalog()).filter((p) => !p.name.trim().startsWith("_")).map(readProject).filter((x) => x !== null);
     read.sort((a, b) => a.order - b.order);
     const list = read.map((x) => x.entry);
     return list.length ? list : LOCAL;
@@ -116,6 +107,12 @@ export async function getProjects(): Promise<ProjectEntry[]> {
 
 export async function getProject(slug: string) {
   return (await getProjects()).find((p) => p.slug === slug) ?? null;
+}
+
+// Archivo publicado con ese id (para /api/drive: solo se sirve lo que aparece en la web).
+export async function findPublishedMedia(id: string): Promise<Media | null> {
+  for (const p of await getProjects()) for (const m of [...p.media, ...p.carousel]) if (m.src.startsWith(`/api/drive/${id}/`)) return m;
+  return null;
 }
 
 // Lo que necesita la esfera: portada, fotos para el pase al pasar el ratón y, si es de vídeo, el vídeo.
