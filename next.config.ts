@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
     : {
         cacheComponents: true,
         partialPrefetching: true,
-        // Imágenes locales y las de los proyectos, servidas desde Drive por /api/drive/<id>/<versión>.
-        images: { localPatterns: [{ pathname: "/stock/**" }, { pathname: "/brand/**" }, { pathname: "/api/drive/**" }] },
+        // Las fotos de Drive se piden ya redimensionadas (ver src/lib/image-loader.ts).
+        images: { loader: "custom", loaderFile: "./src/lib/image-loader.ts" },
       }),
   turbopack: {
     rules: {
