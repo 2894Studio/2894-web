@@ -91,16 +91,26 @@ function readProject(p: CatalogProject) {
 export async function getProjects(): Promise<ProjectEntry[]> {
   "use cache";
   cacheTag("projects");
-  cacheLife("hours");
-  if (!driveReady()) return LOCAL;
+  // Sin conexión con Drive, o si falla, se muestran los ejemplos solo un momento: se vuelve a intentar enseguida
+  // (si no, un fallo puntual —p. ej. el script aún sin autorizar— dejaría los ejemplos durante horas).
+  if (!driveReady()) {
+    cacheLife("minutes");
+    return LOCAL;
+  }
   try {
     // El script ya omite las carpetas que empiezan por "_" (borradores).
     const read = (await fetchCatalog()).filter((p) => !p.name.trim().startsWith("_")).map(readProject).filter((x) => x !== null);
     read.sort((a, b) => a.order - b.order);
     const list = read.map((x) => x.entry);
-    return list.length ? list : LOCAL;
+    if (!list.length) {
+      cacheLife("minutes"); // aún no hay proyectos con fotos o vídeos
+      return LOCAL;
+    }
+    cacheLife("hours");
+    return list;
   } catch (e) {
     console.error("Proyectos desde Drive:", e);
+    cacheLife("seconds");
     return LOCAL;
   }
 }
