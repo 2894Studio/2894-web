@@ -6,7 +6,7 @@ import { bodyFromHtml, folderInfo, mediaKind, parseFields, pickCover } from "@/l
 // Proyectos del estudio. Se leen de Google Drive a través del Apps Script (una carpeta por proyecto, ver docs/drive-cms.md);
 // sin Drive configurado, o si falla, se muestran estos de ejemplo. Se refrescan solos cada hora o al
 // abrir /api/revalidate?secret=… ("Publicar cambios").
-export type Media = { kind: "image" | "video"; src: string; mime?: string; poster?: string; width?: number; height?: number; alt: string };
+export type Media = { kind: "image" | "video"; src: string; id?: string; mime?: string; poster?: string; width?: number; height?: number; alt: string };
 export type ProjectEntry = {
   slug: string;
   title: string;
@@ -58,7 +58,8 @@ function toMedia(f: CatalogFile, alt: string): Media | null {
   const kind = mediaKind(f.mimeType);
   if (!kind) return null;
   const base = `/api/drive/${f.id}/${version(f)}`;
-  return { kind, src: base, mime: f.mimeType, poster: kind === "video" ? `${base}/poster` : undefined, alt };
+  // (Los vídeos también pasan por /api/drive: Google no deja que otra web los cargue directamente.)
+  return { kind, src: base, id: f.id, mime: f.mimeType, poster: kind === "video" ? `${base}/poster` : undefined, alt };
 }
 
 function readProject(p: CatalogProject) {
@@ -121,7 +122,7 @@ export async function getProject(slug: string) {
 
 // Archivo publicado con ese id (para /api/drive: solo se sirve lo que aparece en la web).
 export async function findPublishedMedia(id: string): Promise<Media | null> {
-  for (const p of await getProjects()) for (const m of [...p.media, ...p.carousel]) if (m.src.startsWith(`/api/drive/${id}/`)) return m;
+  for (const p of await getProjects()) for (const m of [...p.media, ...p.carousel]) if (m.id === id) return m;
   return null;
 }
 

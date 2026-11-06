@@ -19,8 +19,8 @@ const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothE = (t: number) => t * t * (3 - 2 * t);
 
 // Contenido de una tarjeta: la portada y, al pasar el ratón (o con la tarjeta abierta), el pase de todas las
-// fotos del proyecto a ~8 fotos/s, como un vídeo; en proyectos de vídeo, el vídeo sin sonido.
-const FRAME_MS = 125;
+// fotos del proyecto (~0,4 s cada una); en proyectos de vídeo, el vídeo sin sonido.
+const FRAME_MS = 420; // cada foto ~0,4 s
 const SIZES = "(max-width: 640px) 70vw, 40vw";
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);

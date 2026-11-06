@@ -8,6 +8,7 @@ import { findPublishedMedia } from "@/lib/projects";
 // Solo archivos que aparecen en la web. La versión cambia cuando el archivo cambia en Drive, así que la
 // respuesta se guarda en caché "para siempre" en el CDN y en el navegador.
 const CACHE = "public, max-age=86400, s-maxage=31536000, immutable";
+const CHUNK = 4 * 1024 * 1024;
 const notFound = () => new Response("No encontrado", { status: 404 });
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
@@ -25,11 +26,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ path: st
     return new Response(r.body, { headers: { "content-type": type, "cache-control": CACHE } });
   }
 
-  const r = await fetchDriveFile(id, req.headers.get("range"));
+  // Vídeo por trozos de como mucho 4 MB (límite de respuesta de las funciones de Vercel). El navegador pide
+  // los vídeos por rangos y, al recibir un trozo, pide el siguiente.
+  const m = (req.headers.get("range") ?? "bytes=0-").match(/^bytes=(\d+)-(\d*)$/);
+  const start = m ? Number(m[1]) : 0;
+  const end = Math.min(m && m[2] ? Number(m[2]) : Infinity, start + CHUNK - 1);
+  const r = await fetchDriveFile(id, `bytes=${start}-${end}`);
   const type = r.headers.get("content-type") ?? "";
   if ((!r.ok && r.status !== 206) || type.startsWith("text/html")) return new Response("No disponible", { status: 502 });
   // Drive suele responder "application/octet-stream": se usa el tipo real del archivo.
-  const headers = new Headers({ "content-type": media.mime ?? (type.startsWith("video/") ? type : "video/mp4"), "accept-ranges": "bytes", "cache-control": CACHE });
+  // Solo caché del navegador: el CDN no distingue rangos y podría devolver un trozo equivocado.
+  const headers = new Headers({ "content-type": media.mime ?? (type.startsWith("video/") ? type : "video/mp4"), "accept-ranges": "bytes", "cache-control": "private, max-age=86400" });
   for (const h of ["content-length", "content-range"]) {
     const v = r.headers.get(h);
     if (v) headers.set(h, v);
