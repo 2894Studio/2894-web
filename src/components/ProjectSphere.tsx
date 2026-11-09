@@ -25,6 +25,7 @@ const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la 
 const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
 // Los vídeos empiezan un poco después del inicio (muchos arrancan en blanco o en negro) y vuelven ahí al terminar.
 export const VIDEO_START = 4;
+export const VIDEO_RATE = 2; // los vídeos de proyectos se reproducen a doble velocidad
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
@@ -41,7 +42,10 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
   useEffect(() => {
     const v = video.current;
     if (!v) return;
-    if (animate) v.play().catch(() => {});
+    if (animate) {
+      v.playbackRate = VIDEO_RATE;
+      v.play().catch(() => {});
+    }
     else v.pause();
   }, [animate]);
 
@@ -64,6 +68,7 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
           aria-hidden
           onEnded={(e) => {
             e.currentTarget.currentTime = VIDEO_START;
+            e.currentTarget.playbackRate = VIDEO_RATE;
             e.currentTarget.play().catch(() => {});
           }}
           className="absolute inset-0 h-full w-full object-cover"
