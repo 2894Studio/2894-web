@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import { Pill } from "@/components/Pill";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
 
@@ -313,8 +312,8 @@ export function ProjectSphere({
             <p className="text-sm uppercase tracking-wide">{shown.category}</p>
             <h3 className="mt-2 text-3xl font-light uppercase tracking-tight">{shown.title}</h3>
             <p className="mt-3 text-base">{shown.review}</p>
+            {/* "Ver caso" retirado por ahora: las páginas /proyectos/<slug> siguen existiendo. */}
             <div className="mt-5 flex items-center gap-3">
-              <Pill href={`/proyectos/${shown.id}`}>Ver caso</Pill>
               {pinned && (
                 <button type="button" onClick={() => setPinned(null)} className="spring min-h-11 rounded-full border border-ink px-4 text-sm font-medium uppercase hover:bg-ink hover:text-cloud">
                   Cerrar
