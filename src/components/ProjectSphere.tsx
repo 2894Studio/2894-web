@@ -21,11 +21,10 @@ const smoothE = (t: number) => t * t * (3 - 2 * t);
 // Contenido de una tarjeta: la portada y, al pasar el ratón (o con la tarjeta abierta), el pase de todas las
 // fotos del proyecto (~0,4 s cada una); en proyectos de vídeo, el vídeo sin sonido.
 const FRAME_MS = 420; // cada foto ~0,4 s
-const SIZES = "(max-width: 640px) 70vw, 40vw";
+const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la tarjeta en grande)
+const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);
-  const [warm, setWarm] = useState(false); // las fotos del pase se cargan la primera vez que se activa
-  if (active && !warm) setWarm(true);
   const video = useRef<HTMLVideoElement>(null);
   const reduced = typeof window !== "undefined" && window.matchMedia(REDUCED).matches;
   const animate = active && !reduced;
@@ -48,9 +47,9 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
   return (
     <>
       {item.image && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
-      {warm && !item.video &&
+      {!item.video &&
         frames.map((src) => (
-          <Image key={src} src={src} alt="" fill sizes={SIZES} draggable={false} className={`object-cover ${shown === src ? "opacity-100" : "opacity-0"}`} />
+          <Image key={src} src={src} alt="" fill sizes={FRAME_SIZES} draggable={false} className={`object-cover ${shown === src ? "opacity-100" : "opacity-0"}`} />
         ))}
       {item.video && (
         <video
@@ -279,7 +278,7 @@ export function ProjectSphere({
               onFocus={() => setHovered(p)}
               onBlur={() => setHovered((h) => (h?.id === p.id ? null : h))}
               onClick={() => !moved.current && setPinned((cur) => (cur?.id === p.id ? null : p))}
-              className={`group relative block h-full w-full overflow-hidden bg-ink/5 transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
+              className={`group relative block h-full w-full overflow-hidden transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
               <CardMedia item={p} active={hovered?.id === p.id || pinned?.id === p.id} />
             </button>

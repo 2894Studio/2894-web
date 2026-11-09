@@ -50,16 +50,18 @@ const LOCAL: ProjectEntry[] = [
   sample("site-ideacion", "Site de Ideación para proyectos creativos", "Web", 6),
 ];
 
-// Las imágenes y vídeos se sirven a través de /api/drive/<id>/<versión>. La versión (fecha de modificación) va en
-// la ruta: si el archivo cambia en Drive, cambia la URL y no se ve el antiguo en caché.
+// Fotos: directamente desde el CDN de imágenes de Google (rápido; el archivo está compartido por enlace). El ancho
+// lo ajusta src/lib/image-loader.ts. Vídeos: a través de /api/drive/<id>/<versión>, porque Google no deja que otra
+// web los cargue directamente. La versión (fecha de modificación) evita ver en caché un archivo ya cambiado.
+const IMG_BASE = process.env.DRIVE_IMG_BASE ?? "https://lh3.googleusercontent.com";
 const version = (f: CatalogFile) => Date.parse(f.modifiedTime || "0").toString(36);
 const byName = (a: CatalogFile, b: CatalogFile) => a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" });
 function toMedia(f: CatalogFile, alt: string): Media | null {
   const kind = mediaKind(f.mimeType);
   if (!kind) return null;
-  const base = `/api/drive/${f.id}/${version(f)}`;
-  // (Los vídeos también pasan por /api/drive: Google no deja que otra web los cargue directamente.)
-  return { kind, src: base, id: f.id, mime: f.mimeType, poster: kind === "video" ? `${base}/poster` : undefined, alt };
+  const img = `${IMG_BASE}/d/${f.id}=w2400`; // la foto, o el fotograma si es un vídeo
+  const src = kind === "image" ? img : `/api/drive/${f.id}/${version(f)}`;
+  return { kind, src, id: f.id, mime: f.mimeType, poster: kind === "video" ? img.replace(/=w\d+$/, "=w1200") : undefined, alt };
 }
 
 function readProject(p: CatalogProject) {
