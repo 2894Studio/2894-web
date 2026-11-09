@@ -28,6 +28,7 @@ export const VIDEO_RATE = 2; // los vídeos de proyectos se reproducen a doble v
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
+  const [loading, setLoading] = useState(Boolean(item.video)); // el vídeo aún no tiene datos para reproducirse
   const reduced = typeof window !== "undefined" && window.matchMedia(REDUCED).matches;
   const animate = active && !reduced;
   const frames = item.frames.length > 1 ? item.frames : [];
@@ -66,6 +67,10 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
           playsInline
           preload="auto"
           aria-hidden
+          onLoadStart={() => setLoading(true)}
+          onWaiting={() => setLoading(true)}
+          onCanPlay={() => setLoading(false)}
+          onPlaying={() => setLoading(false)}
           onEnded={(e) => {
             e.currentTarget.currentTime = VIDEO_START;
             e.currentTarget.playbackRate = VIDEO_RATE;
@@ -74,6 +79,7 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}
+      {item.video && loading && <span role="status" aria-label="Cargando vídeo" className="loadbar" />}
     </>
   );
 }
