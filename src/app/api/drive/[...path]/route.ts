@@ -36,7 +36,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ path: st
   if ((!r.ok && r.status !== 206) || type.startsWith("text/html")) return new Response("No disponible", { status: 502 });
   // Drive suele responder "application/octet-stream": se usa el tipo real del archivo.
   // Solo caché del navegador: el CDN no distingue rangos y podría devolver un trozo equivocado.
-  const headers = new Headers({ "content-type": media.mime ?? (type.startsWith("video/") ? type : "video/mp4"), "accept-ranges": "bytes", "cache-control": "private, max-age=86400" });
+  // Los .mov (QuickTime, p. ej. grabaciones de pantalla de Mac) llevan H.264 como los MP4: anunciados como
+  // "video/quicktime", Chrome no los reproduce; como "video/mp4", sí.
+  const mime = !media.mime || media.mime === "video/quicktime" ? "video/mp4" : media.mime;
+  const headers = new Headers({ "content-type": mime, "accept-ranges": "bytes", "cache-control": "private, max-age=86400" });
   for (const h of ["content-length", "content-range"]) {
     const v = r.headers.get(h);
     if (v) headers.set(h, v);
