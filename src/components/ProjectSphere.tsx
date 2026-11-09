@@ -52,7 +52,8 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const shown = animate && frames.length ? frames[tick % frames.length] : null;
   return (
     <>
-      {item.image && !item.video && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
+      {/* La imagen queda siempre debajo: en los proyectos de vídeo, la tarjeta nunca se ve vacía mientras el vídeo carga. */}
+      {item.image && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
       {!item.video &&
         frames.map((src) => (
           <Image key={src} src={src} alt="" fill sizes={FRAME_SIZES} draggable={false} className={`object-cover ${shown === src ? "opacity-100" : "opacity-0"}`} />
@@ -64,7 +65,7 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
           src={`${item.video}#t=${VIDEO_START}`}
           muted
           playsInline
-          preload="metadata"
+          preload="auto"
           aria-hidden
           onEnded={(e) => {
             e.currentTarget.currentTime = VIDEO_START;
@@ -151,18 +152,23 @@ export function ProjectSphere({
           s.frontIdx = i;
         }
         const depth = (z + 1) / 2; // 0 detrás, 1 delante
-        const w = s.R * 0.36; // tarjetas pequeñas (referencia: gionatannese.com): dejan aire al título y a la reseña
+        // Tarjetas pequeñas (referencia: gionatannese.com): dejan aire al título y a la reseña.
+        // Fotos en vertical (4:5); proyectos de vídeo en horizontal (16:9), con una superficie parecida.
+        const landscape = Boolean(projects[i].video);
+        const w = s.R * (landscape ? 0.56 : 0.36);
+        const h = landscape ? (w * 9) / 16 : w * 1.25;
         c.style.width = `${w}px`;
-        c.style.height = `${w * 1.25}px`;
+        c.style.height = `${h}px`;
         c.style.marginLeft = `${-w / 2}px`;
-        c.style.marginTop = `${-w * 0.625}px`;
+        c.style.marginTop = `${-h / 2}px`;
         em[i] += ((i === pin ? 1 : 0) - em[i]) * 0.12;
         const e = smoothE(em[i]);
         // Posición en la esfera y, abierto, en el centro de la pantalla por delante de todo.
         const zO = s.R * 1.3; // delante de las demás
         const f = PERSP / (PERSP - zO); // aumento por perspectiva a esa profundidad, se compensa
-        const bigH = Math.min(window.innerHeight * (window.innerWidth < 640 ? 0.3 : 0.56), window.innerWidth * 0.7 * 1.25);
-        const bigS = bigH / (w * 1.25) / f;
+        // Abierta: alto máximo según la pantalla, sin pasar del 70 % del ancho (los vídeos horizontales mandan por ancho).
+        const bigH = window.innerHeight * (window.innerWidth < 640 ? 0.3 : 0.56);
+        const bigS = Math.min(bigH / h, (window.innerWidth * (window.innerWidth < 640 ? 0.86 : 0.46)) / w) / f;
         const tx = lerpN(x * s.R * k, offX / f, e), ty = lerpN(-p.y * s.R * k, offY / f, e), tz = lerpN(z * s.R * k, zO, e);
         const sc = lerpN(Math.min(1, k * 1.15) * (0.62 + depth * 0.38), bigS, e);
         c.style.transform = `translate3d(${tx}px, ${ty}px, ${tz}px) scale(${sc})`;

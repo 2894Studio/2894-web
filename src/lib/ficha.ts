@@ -138,7 +138,7 @@ export const mediaKind = (mime: string): "image" | "video" | null =>
 // Portada: el archivo llamado "portada" (cualquier extensión); si no hay, la primera imagen; si no, el primer vídeo.
 export function pickCover<T extends MediaFile>(files: T[]): T | null {
   return (
-    files.find((f) => /^(portada|cover)(\.[a-z0-9]+)?$/i.test(f.name.trim())) ??
+    files.find((f) => /^(portada|cover)( ?\(\d+\))?(\.[a-z0-9]+)?$/i.test(f.name.trim())) ?? // también "portada (1).mp4"
     files.find((f) => f.kind === "image") ??
     files.find((f) => f.kind === "video") ??
     null
