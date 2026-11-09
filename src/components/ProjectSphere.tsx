@@ -24,7 +24,7 @@ const FRAME_MS = 420; // cada foto ~0,4 s
 const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la tarjeta en grande)
 const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
 // Los vídeos empiezan un poco después del inicio (muchos arrancan en blanco o en negro) y vuelven ahí al terminar.
-export const VIDEO_START = 1.5;
+export const VIDEO_START = 4;
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
