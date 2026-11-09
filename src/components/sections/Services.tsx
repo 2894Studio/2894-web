@@ -7,7 +7,7 @@ import { getLenis } from "@/lib/lenis";
 import GridScan from "@/components/GridScan";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { applyImages, services } from "@/content/site";
+import { services } from "@/content/site";
 
 const LAST = services.length - 1;
 // Fondo de cada palabra: Discover = escáner sobre tinta; Apply = cielo claro; Grow = cielo azul con nubes.
@@ -18,15 +18,17 @@ const BG = [
 ];
 const DARK = [false, false, true];
 
-// Posición de las imágenes alrededor de "Apply" (en % del panel) y su parallax propio.
+// Posición de las imágenes alrededor de "Apply" (en % del panel) y su parallax propio. Ordenadas para que,
+// con pocos proyectos, las primeras queden repartidas (esquinas opuestas primero).
 const SLOTS = [
   { l: "6%", t: "12%", w: "clamp(7rem,15vw,15rem)", d: 1.4 },
-  { l: "30%", t: "11%", w: "clamp(5rem,10vw,10rem)", d: 0.8 },
-  { l: "74%", t: "10%", w: "clamp(6rem,13vw,13rem)", d: 1.2 },
   { l: "80%", t: "62%", w: "clamp(7rem,15vw,15rem)", d: 1.6 },
-  { l: "52%", t: "74%", w: "clamp(5rem,10vw,10rem)", d: 0.9 },
+  { l: "74%", t: "10%", w: "clamp(6rem,13vw,13rem)", d: 1.2 },
   { l: "10%", t: "66%", w: "clamp(6rem,12vw,12rem)", d: 1.1 },
+  { l: "30%", t: "11%", w: "clamp(5rem,10vw,10rem)", d: 0.8 },
+  { l: "52%", t: "74%", w: "clamp(5rem,10vw,10rem)", d: 0.9 },
 ];
+export type ApplyImage = { src: string; alt: string };
 
 const mix = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
 const smooth = (a: number, b: number, x: number) => {
@@ -42,7 +44,8 @@ const SKIES = [
 ];
 
 // Discover. Apply. Grow. como recorrido horizontal: el scroll vertical pasa de una palabra a otra y cambia el mundo de fondo.
-export function Services() {
+export function Services({ images }: { images: ApplyImage[] }) {
+  const applyImages = images.slice(0, SLOTS.length); // una foto de cada proyecto real (portada)
   const reduced = useReducedMotion();
   const section = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);

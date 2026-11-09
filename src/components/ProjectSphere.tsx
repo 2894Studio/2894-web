@@ -23,6 +23,8 @@ const smoothE = (t: number) => t * t * (3 - 2 * t);
 const FRAME_MS = 420; // cada foto ~0,4 s
 const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la tarjeta en grande)
 const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
+// Los vídeos empiezan un poco después del inicio (muchos arrancan en blanco o en negro) y vuelven ahí al terminar.
+export const VIDEO_START = 1.5;
 function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const [tick, setTick] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
@@ -46,22 +48,25 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
   const shown = animate && frames.length ? frames[tick % frames.length] : null;
   return (
     <>
-      {item.image && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
+      {item.image && !item.video && <Image src={item.image} alt="" fill sizes={SIZES} draggable={false} className="object-cover" />}
       {!item.video &&
         frames.map((src) => (
           <Image key={src} src={src} alt="" fill sizes={FRAME_SIZES} draggable={false} className={`object-cover ${shown === src ? "opacity-100" : "opacity-0"}`} />
         ))}
       {item.video && (
+        // Sin póster: el propio vídeo muestra el fotograma de VIDEO_START (el de Drive suele ser el primero, en blanco).
         <video
           ref={video}
-          src={item.video}
-          poster={item.image || undefined}
+          src={`${item.video}#t=${VIDEO_START}`}
           muted
-          loop
           playsInline
-          preload={item.image ? "none" : "metadata"}
+          preload="metadata"
           aria-hidden
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${animate || !item.image ? "opacity-100" : "opacity-0"}`}
+          onEnded={(e) => {
+            e.currentTarget.currentTime = VIDEO_START;
+            e.currentTarget.play().catch(() => {});
+          }}
+          className="absolute inset-0 h-full w-full object-cover"
         />
       )}
     </>

@@ -16,7 +16,8 @@ export default async function Home() {
         {/* `contents`: todas las escenas (también el cierre) son hermanas para poder apilarse. */}
         <main className="contents">
           <Scene><Intro items={items} /></Scene>
-          <Scene><Services /></Scene>
+          {/* Apply: la portada de cada proyecto real */}
+          <Scene><Services images={items.filter((i) => i.frames.length).map((i) => ({ src: i.video ? i.frames[0] : i.image, alt: i.title }))} /></Scene>
           <Scene><Clients /></Scene>
         </main>
         <Scene><Footer /></Scene>

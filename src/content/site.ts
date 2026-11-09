@@ -72,5 +72,3 @@ export const reel = {
   poster: "https://i.ytimg.com/vi/EdIrzwME-do/maxresdefault.jpg",
 };
 
-// Imágenes que aparecen alrededor de "Apply" durante el recorrido horizontal.
-export const applyImages = [15, 2, 16, 5, 17, 7].map((i) => ({ src: stock[i].src, alt: stock[i].title }));

@@ -39,7 +39,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
 
       <figure className="relative mt-12 overflow-hidden rounded-3xl bg-ink/5" style={{ aspectRatio: p.cover.width && p.cover.height && p.cover.width > p.cover.height ? `${p.cover.width} / ${p.cover.height}` : "16 / 9" }}>
         {p.cover.kind === "video" ? (
-          <video src={p.cover.src} poster={p.cover.poster} autoPlay muted loop playsInline controls preload="metadata" className="h-full w-full object-cover" />
+          <video src={`${p.cover.src}#t=1.5`} autoPlay muted loop playsInline controls preload="metadata" className="h-full w-full object-cover" />
         ) : (
           <Image src={p.cover.src} alt={p.cover.alt} fill priority sizes="100vw" className="object-cover" />
         )}
