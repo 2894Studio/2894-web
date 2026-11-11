@@ -17,16 +17,16 @@ const BASE_SPEED = 0.0024; // rad por frame
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothE = (t: number) => t * t * (3 - 2 * t);
 
-// Contenido de una tarjeta: la portada y, al pasar el ratón (o con la tarjeta abierta), el pase de todas las
-// fotos del proyecto (~0,4 s cada una); en proyectos de vídeo, el vídeo sin sonido.
+// Contenido de una tarjeta: la portada y, con la esfera a la vista, el pase de todas las fotos del proyecto
+// (~0,4 s cada una, como un GIF); en proyectos de vídeo, el vídeo sin sonido.
 const FRAME_MS = 420; // cada foto ~0,4 s
 const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la tarjeta en grande)
 const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
 // Los vídeos empiezan un poco después del inicio (muchos arrancan en blanco o en negro) y vuelven ahí al terminar.
 export const VIDEO_START = 4;
 export const VIDEO_RATE = 2; // los vídeos de proyectos se reproducen a doble velocidad
-function CardMedia({ item, active }: { item: Project; active: boolean }) {
-  const [tick, setTick] = useState(0);
+function CardMedia({ item, active, index = 0 }: { item: Project; active: boolean; index?: number }) {
+  const [tick, setTick] = useState(index); // cada ficha empieza en una foto distinta: no cambian todas a la vez
   const video = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(Boolean(item.video)); // el vídeo aún no tiene datos para reproducirse
   const reduced = typeof window !== "undefined" && window.matchMedia(REDUCED).matches;
@@ -35,9 +35,17 @@ function CardMedia({ item, active }: { item: Project; active: boolean }) {
 
   useEffect(() => {
     if (!animate || item.video || frames.length < 2) return;
-    const t = setInterval(() => setTick((n) => n + 1), FRAME_MS);
-    return () => clearInterval(t);
-  }, [animate, item.video, frames.length]);
+    // Desfase por ficha para que los cambios no coincidan.
+    let t = 0;
+    const start = window.setTimeout(() => {
+      setTick((n) => n + 1);
+      t = window.setInterval(() => setTick((n) => n + 1), FRAME_MS);
+    }, (index * 137) % FRAME_MS);
+    return () => {
+      clearTimeout(start);
+      clearInterval(t);
+    };
+  }, [animate, item.video, frames.length, index]);
 
   useEffect(() => {
     const v = video.current;
@@ -105,6 +113,7 @@ export function ProjectSphere({
   const [hovered, setHovered] = useState<Project | null>(null);
   const [pinned, setPinned] = useState<Project | null>(null);
   const [inside, setInside] = useState(false);
+  const [onScreen, setOnScreen] = useState(false); // con la esfera a la vista, todas las fichas se mueven (como GIFs)
   const [front, setFront] = useState(projects[0].title);
   const moved = useRef(false);
   const shown = pinned ?? hovered;
@@ -160,7 +169,7 @@ export function ProjectSphere({
         // Tarjetas pequeñas (referencia: gionatannese.com): dejan aire al título y a la reseña.
         // Fotos en vertical (4:5); proyectos de vídeo en horizontal (16:9), con una superficie parecida.
         const landscape = Boolean(projects[i].video);
-        const w = s.R * (landscape ? 0.56 : 0.36);
+        const w = s.R * (landscape ? 0.74 : 0.48); // fichas grandes: el trabajo se ve bien
         const h = landscape ? (w * 9) / 16 : w * 1.25;
         c.style.width = `${w}px`;
         c.style.height = `${h}px`;
@@ -195,13 +204,14 @@ export function ProjectSphere({
     let appeared = reduced || controlled;
     const io = new IntersectionObserver(
       ([e]) => {
+        setOnScreen(e.isIntersecting);
         if (e.isIntersecting && !appeared) {
           appeared = true;
           gsap.to(ks, { k: 1, duration: 1.9, ease: "elastic.out(1, 0.62)", stagger: { each: 0.09, from: "center" } });
           s.v = 0.03;
         }
       },
-      { threshold: 0.35 },
+      { threshold: [0, 0.35] },
     );
     io.observe(el);
 
@@ -301,7 +311,7 @@ export function ProjectSphere({
               onClick={() => !moved.current && setPinned((cur) => (cur?.id === p.id ? null : p))}
               className={`group relative block h-full w-full overflow-hidden transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
-              <CardMedia item={p} active={hovered?.id === p.id || pinned?.id === p.id} />
+              <CardMedia item={p} index={i} active={onScreen || hovered?.id === p.id || pinned?.id === p.id} />
             </button>
           </div>
         ))}

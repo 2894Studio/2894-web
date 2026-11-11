@@ -1,12 +1,15 @@
 import { Navbar } from "@/components/Navbar";
 import { Scene, SceneStack } from "@/components/Scenes";
+import { BustScene } from "@/components/sections/BustScene";
 import { Clients } from "@/components/sections/Clients";
 import { Footer } from "@/components/sections/Footer";
-import { Intro } from "@/components/sections/Intro";
+import { Hero } from "@/components/sections/Hero";
+import { Projects } from "@/components/sections/Projects";
 import { Services } from "@/components/sections/Services";
 import { getProjects, toSphere } from "@/lib/projects";
 
 // Cada sección es una escena propia: se suceden como un vídeo guiado por el scroll.
+// Orden: showreel → proyectos → Discover/Apply/Grow → clientes → busto (easter egg) → cierre.
 export default async function Home() {
   const items = (await getProjects()).map(toSphere);
   return (
@@ -15,10 +18,12 @@ export default async function Home() {
       <SceneStack>
         {/* `contents`: todas las escenas (también el cierre) son hermanas para poder apilarse. */}
         <main className="contents">
-          <Scene><Intro items={items} /></Scene>
+          <Scene><Hero /></Scene>
+          <Scene><Projects items={items} /></Scene>
           {/* Apply: la portada de cada proyecto real */}
           <Scene><Services images={items.filter((i) => i.frames.length).map((i) => ({ src: i.video ? i.frames[0] : i.image, alt: i.title }))} /></Scene>
           <Scene><Clients /></Scene>
+          <Scene><BustScene /></Scene>
         </main>
         <Scene><Footer /></Scene>
       </SceneStack>

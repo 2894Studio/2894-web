@@ -80,13 +80,13 @@ export function Hero({ managed = false }: { managed?: boolean }) {
     });
   });
 
-  // La barra es reproductor mientras el showreel ocupa la pantalla.
+  // Play/pausa y sonido en la barra solo arriba del todo: tras el primer scroll se pliegan (vuelven al subir).
   useEffect(() => {
-    const el = header.current;
-    if (!el || managed) return; // dentro de la apertura, el estado "activo" lo marca ella según el scroll
-    const io = new IntersectionObserver(([e]) => setReel({ active: e.intersectionRatio > 0.45 }), { threshold: [0, 0.45, 1] });
-    io.observe(el);
-    return () => io.disconnect();
+    if (managed) return; // dentro de una escena gestionada, el estado "activo" lo marca ella según el scroll
+    const update = () => setReel({ active: window.scrollY < 40 });
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
   }, [managed]);
 
   useEffect(() => {

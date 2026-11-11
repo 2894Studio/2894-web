@@ -9,11 +9,11 @@ import { useEffect, useRef, type MutableRefObject } from "react";
 
 export type LookTarget = { active: boolean; x: number; y: number };
 
-const STRENGTH = 0.1; // desplazamiento máximo del parallax, en fracción del ancho de la imagen
+const STRENGTH = 0.12; // desplazamiento máximo del parallax, en fracción del ancho de la imagen
 const PIVOT = 0.45; // profundidad que no se mueve (0 lejos, 1 cerca)
 const SMOOTHING = 11; // frecuencia del muelle: más alto, más rápido
-const TILT_Y = 16; // grados de giro máximo a izquierda/derecha
-const TILT_X = 11; // grados de giro máximo arriba/abajo
+const TILT_Y = 26; // grados de giro máximo a izquierda/derecha (más giro lateral)
+const TILT_X = 13; // grados de giro máximo arriba/abajo
 
 const VERT = "attribute vec2 p;varying vec2 uv;void main(){uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}";
 // Inversión por punto fijo del desplazamiento s + o·(h(s)−pivot) = uv.

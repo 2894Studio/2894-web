@@ -54,17 +54,18 @@ export type Project = (typeof projects)[number];
 // Fuente de los textos: LinkedIn de 2894_ (Grow: resumen del apartado "más allá de la eficiencia"; validar con el cliente).
 export const services = [
   { key: "Discover", text: "Research, formaciones, benchmark e identificación de problemas." },
-  { key: "Apply", text: "Flujos de trabajo y herramientas con IA, con acompañamiento." },
+  { key: "Apply", text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento." },
   { key: "Grow", text: "Crecimiento y madurez del equipo, visión estratégica y nuevas formas de creación." },
 ];
 
 // TODO: sustituir por los clientes y disciplinas reales; las imágenes salen en hover.
 export const clients = [
-  { name: "ING", disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
-  { name: "MOA", disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
-  { name: "NATEEVO", disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
+  // Orden pedido por el estudio: Inditex, ING, Nateevo, DPROMA, MOA.
   { name: "INDITEX", disciplines: ["Research", "Strategy", "Design", "Development"], image: stock[13].src, alt: stock[13].title },
+  { name: "ING", disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
+  { name: "NATEEVO", disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
   { name: "DPROMA", disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
+  { name: "MOA", disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
 ];
 
 export const reel = {

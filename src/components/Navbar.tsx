@@ -40,11 +40,12 @@ function useActiveSection() {
   return active;
 }
 
-// Se oculta al bajar y reaparece al subir (con margen para no parpadear); visible siempre arriba del todo y al final.
+// Se oculta mientras se baja y reaparece al subir o en cuanto se deja de hacer scroll (así nunca se "pierde");
+// visible siempre arriba del todo y al final.
 function useHideOnScroll() {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
-    let last = window.scrollY, acc = 0, raf = 0;
+    let last = window.scrollY, acc = 0, raf = 0, idle = 0;
     const update = () => {
       raf = 0;
       const y = window.scrollY, d = y - last;
@@ -56,17 +57,21 @@ function useHideOnScroll() {
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
+      clearTimeout(idle);
+      idle = window.setTimeout(() => {
+        acc = 0;
+        setHidden(false);
+      }, 650);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(idle);
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
   return hidden;
 }
-
-const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
 const PlayIcon = ({ playing }: { playing: boolean }) => (
   <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="currentColor">
@@ -80,8 +85,8 @@ const SoundIcon = ({ muted }: { muted: boolean }) => (
   </svg>
 );
 
-// Barra inferior de cristal. Mientras se ve el showreel es su reproductor (logo, play/pausa, progreso, sonido);
-// después se transforma en la navegación: logo a la izquierda y secciones a la derecha.
+// Barra inferior de cristal: logo, secciones y CTA. Mientras se ve el showreel lleva además play/pausa y sonido,
+// que se pliegan tras el primer scroll.
 export function Navbar() {
   const reelState = useReel();
   const reducedMotion = useReducedMotion();
@@ -137,16 +142,18 @@ export function Navbar() {
         onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setFocusInside(false)}
         className={`fixed bottom-[calc(16px+env(safe-area-inset-bottom,0px))] left-1/2 z-[60] w-[min(760px,calc(100vw-32px))] -translate-x-1/2 transition-[translate,opacity] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${hidden ? "pointer-events-none translate-y-[160%] opacity-0" : "translate-y-0 opacity-100"}`}
       >
-        <div className="grid rounded-full border border-white/50 bg-white/60 p-1.5 shadow-[0_8px_32px_rgb(11_11_13/0.08),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-lg backdrop-saturate-150">
-          {/* Capa reproductor */}
+        <div className="flex items-center gap-2 rounded-full border border-white/50 bg-white/60 p-1.5 shadow-[0_8px_32px_rgb(11_11_13/0.08),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-lg backdrop-saturate-150">
+          <a href="#top" aria-label="2894_, volver al inicio" className="inline-flex min-h-11 shrink-0 items-center rounded-full pl-4 pr-1 text-base font-bold focus-visible:outline-2 focus-visible:outline-cobalt">
+            <Logo />
+          </a>
+
+          {/* Controles del showreel: visibles mientras se ve el vídeo; tras el primer scroll se pliegan y la barra
+              se queda solo con la navegación (la transformación se ve: el hueco se cierra con suavidad). */}
           <div
             aria-hidden={!player}
             inert={!player}
-            className={`col-start-1 row-start-1 flex items-center gap-3 transition-[opacity,translate] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${player ? "opacity-100" : "pointer-events-none -translate-y-2 opacity-0"}`}
+            className={`flex shrink-0 items-center gap-1 overflow-hidden transition-[max-width,opacity,margin] duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${player ? "max-w-32 opacity-100" : "pointer-events-none -ml-2 max-w-0 opacity-0"}`}
           >
-            <a href="#top" aria-label="2894_, volver al inicio" className="inline-flex min-h-11 shrink-0 items-center rounded-full pl-4 pr-1 text-base font-bold focus-visible:outline-2 focus-visible:outline-cobalt">
-              <Logo />
-            </a>
             <button
               type="button"
               onClick={reel.toggle}
@@ -155,21 +162,6 @@ export function Navbar() {
             >
               <PlayIcon playing={reelState.playing} />
             </button>
-            <input
-              type="range"
-              min={0}
-              max={reelState.duration || 1}
-              step={0.1}
-              value={Math.min(reelState.time, reelState.duration || 1)}
-              onChange={(e) => reel.seek(Number(e.target.value))}
-              aria-label="Posición del showreel"
-              aria-valuetext={`${clock(reelState.time)} de ${clock(reelState.duration)}`}
-              className="reel-range min-w-0 flex-1"
-              style={{ ["--p" as string]: `${reelState.duration ? (reelState.time / reelState.duration) * 100 : 0}%` }}
-            />
-            <span aria-hidden className="hidden shrink-0 text-xs font-medium tabular-nums text-ink/70 sm:inline">
-              {clock(reelState.time)} / {clock(reelState.duration)}
-            </span>
             <button
               type="button"
               onClick={reel.toggleSound}
@@ -181,16 +173,7 @@ export function Navbar() {
             </button>
           </div>
 
-          {/* Capa navegación */}
-          <div
-            aria-hidden={player}
-            inert={player}
-            className={`col-start-1 row-start-1 flex items-center justify-between gap-6 transition-[opacity,translate] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${player ? "pointer-events-none translate-y-2 opacity-0" : "opacity-100"}`}
-          >
-          <a href="#top" aria-label="2894_, volver al inicio" className="inline-flex min-h-11 items-center rounded-full pl-4 pr-3 text-base font-bold focus-visible:outline-2 focus-visible:outline-cobalt">
-            <Logo />
-          </a>
-          <ul className="hidden items-center gap-1 sm:flex">
+          <ul className="ml-auto hidden items-center gap-1 sm:flex">
             {links.map((item) => (
               <li key={item.href}>
                 <a
@@ -219,11 +202,10 @@ export function Navbar() {
             aria-expanded={open}
             aria-controls="menu-movil"
             onClick={() => setOpen((o) => !o)}
-            className="min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium text-cloud sm:hidden"
+            className="ml-auto min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium text-cloud sm:hidden"
           >
             {open ? "Cerrar" : "Menú"}
           </button>
-          </div>
         </div>
       </nav>
 
