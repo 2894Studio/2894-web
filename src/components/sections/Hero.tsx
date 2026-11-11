@@ -30,7 +30,8 @@ export function Hero({ managed = false }: { managed?: boolean }) {
       import("hls.js").then(({ default: Hls }) => {
         if (cancelled) return;
         if (!Hls.isSupported()) return; // navegador muy antiguo: se queda el fotograma
-        const h = new Hls({ capLevelToPlayerSize: false, startLevel: -1 });
+        // Máxima calidad: arranca suponiendo buena conexión (empieza en 1080p) y solo baja si de verdad no llega.
+        const h = new Hls({ capLevelToPlayerSize: false, startLevel: -1, abrEwmaDefaultEstimate: 12_000_000, abrBandWidthUpFactor: 0.9, maxBufferLength: 30 });
         h.loadSource(reel.hls);
         h.attachMedia(v);
         hls = h;
