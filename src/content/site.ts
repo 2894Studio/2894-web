@@ -68,8 +68,9 @@ export const clients = [
   { name: "MOA", disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
 ];
 
+// Showreel en alta calidad, servido desde la web (public/showreel, generado desde el original de Drive "_Showreel").
 export const reel = {
-  youtubeId: "EdIrzwME-do",
-  poster: "https://i.ytimg.com/vi/EdIrzwME-do/maxresdefault.jpg",
+  hls: "/showreel/master.m3u8",
+  poster: "/showreel/poster.jpg",
 };
 
