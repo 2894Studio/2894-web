@@ -18,14 +18,18 @@ export type CatalogProject = {
 
 export const driveReady = () => Boolean(process.env.DRIVE_SCRIPT_URL && process.env.DRIVE_SCRIPT_KEY);
 
-export async function fetchCatalog(): Promise<CatalogProject[]> {
+export type CatalogClient = { id: string; name: string; files: CatalogFile[] };
+export type Catalog = { projects: CatalogProject[]; clients: CatalogClient[]; showreel: CatalogFile | null };
+
+// Todo lo que devuelve el script: proyectos, clientes (carpeta "_Clientes") y showreel (carpeta "_Showreel").
+export async function fetchCatalog(): Promise<Catalog> {
   const url = new URL(process.env.DRIVE_SCRIPT_URL!);
   url.searchParams.set("key", process.env.DRIVE_SCRIPT_KEY!);
   const res = await fetch(url, { cache: "no-store", redirect: "follow" });
   if (!res.ok) throw new Error(`Drive (script): ${res.status}`);
-  const j = (await res.json()) as { projects?: CatalogProject[]; error?: string };
+  const j = (await res.json()) as Partial<Catalog> & { error?: string };
   if (!j.projects) throw new Error(`Drive (script): ${j.error ?? "respuesta inesperada"}`);
-  return j.projects;
+  return { projects: j.projects, clients: j.clients ?? [], showreel: j.showreel ?? null };
 }
 
 // Imagen (o fotograma de un vídeo) servida por Google a partir de un archivo compartido por enlace.

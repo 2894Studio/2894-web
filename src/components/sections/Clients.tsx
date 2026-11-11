@@ -6,9 +6,20 @@ import { SectionTitle } from "@/components/SectionTitle";
 import { clients } from "@/content/site";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 
+const FRAME_MS = 420; // como el pase de los proyectos
+
 // Clientes en lista (referencia: Dash). Cada fila responde con rebote; la imagen del cliente sigue al cursor.
-export function Clients() {
+// Si el cliente tiene fotos en Drive (carpeta "_Clientes"), la imagen va pasando por todas, como un GIF.
+export function Clients({ media = {} }: { media?: Record<string, string[]> }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
+  const framesOf = (name: string, fallback: string) => media[name.toLowerCase()] ?? [fallback];
+  const hoverFrames = hover === null ? 0 : framesOf(clients[hover].name, clients[hover].image).length;
+  useEffect(() => {
+    if (hoverFrames < 2 || window.matchMedia(REDUCED).matches) return;
+    const t = window.setInterval(() => setTick((n) => n + 1), FRAME_MS);
+    return () => clearInterval(t);
+  }, [hoverFrames]);
   const float = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
 
@@ -54,9 +65,12 @@ export function Clients() {
         aria-hidden
         className={`pointer-events-none fixed left-0 top-0 z-30 hidden aspect-[4/5] w-56 overflow-hidden transition-[opacity,scale] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] [@media(hover:hover)_and_(pointer:fine)]:block ${hover === null ? "scale-75 opacity-0" : "scale-100 opacity-100"}`}
       >
-        {clients.map((c, i) => (
-          <Image key={c.name} src={c.image} alt="" fill sizes="224px" className={`object-cover transition-opacity duration-300 ${hover === i ? "opacity-100" : "opacity-0"}`} />
-        ))}
+        {clients.map((c, i) => {
+          const frames = framesOf(c.name, c.image);
+          return frames.map((src, k) => (
+            <Image key={`${c.name}-${src}`} src={src} alt="" fill sizes="224px" className={`object-cover ${hover === i && k === tick % frames.length ? "opacity-100" : "opacity-0"}`} />
+          ));
+        })}
       </div>
     </section>
   );

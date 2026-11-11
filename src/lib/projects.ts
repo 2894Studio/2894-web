@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { stock } from "@/content/stock";
-import { driveReady, fetchCatalog, type CatalogFile, type CatalogProject } from "@/lib/drive";
+import { driveReady, fetchCatalog, type Catalog, type CatalogFile, type CatalogProject } from "@/lib/drive";
 import { bodyFromHtml, folderInfo, mediaKind, parseFields, pickCover } from "@/lib/ficha";
 
 // Proyectos del estudio. Se leen de Google Drive a través del Apps Script (una carpeta por proyecto, ver docs/drive-cms.md);
@@ -91,6 +91,37 @@ function readProject(p: CatalogProject) {
   return { order: info.order, entry };
 }
 
+// Una sola lectura del script para proyectos, clientes y showreel (misma etiqueta: "Publicar cambios" lo renueva todo).
+async function getCatalog(): Promise<Catalog> {
+  "use cache";
+  cacheTag("projects");
+  cacheLife("hours");
+  return fetchCatalog();
+}
+
+// Fotos de cada cliente (carpeta "_Clientes" de Drive) para el pase tipo GIF de la sección Clientes.
+// Clave: nombre del cliente en minúsculas ("01 Inditex" → "inditex").
+export async function getClientMedia(): Promise<Record<string, string[]>> {
+  "use cache";
+  cacheTag("projects");
+  if (!driveReady()) {
+    cacheLife("minutes");
+    return {};
+  }
+  try {
+    const out: Record<string, string[]> = {};
+    for (const c of (await getCatalog()).clients) {
+      const imgs = [...c.files].sort(byName).filter((f) => mediaKind(f.mimeType) === "image").map((f) => `${IMG_BASE}/d/${f.id}=w800`);
+      if (imgs.length) out[folderInfo(c.name).label.toLowerCase()] = imgs;
+    }
+    cacheLife("hours");
+    return out;
+  } catch {
+    cacheLife("seconds");
+    return {};
+  }
+}
+
 export async function getProjects(): Promise<ProjectEntry[]> {
   "use cache";
   cacheTag("projects");
@@ -102,7 +133,7 @@ export async function getProjects(): Promise<ProjectEntry[]> {
   }
   try {
     // El script ya omite las carpetas que empiezan por "_" (borradores).
-    const read = (await fetchCatalog()).filter((p) => !p.name.trim().startsWith("_")).map(readProject).filter((x) => x !== null);
+    const read = (await getCatalog()).projects.filter((p) => !p.name.trim().startsWith("_")).map(readProject).filter((x) => x !== null);
     read.sort((a, b) => a.order - b.order);
     const list = read.map((x) => x.entry);
     if (!list.length) {

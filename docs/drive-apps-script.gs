@@ -7,7 +7,10 @@
  *
  * Qué hace: cuando la web lo pide (con la clave), lee cada carpeta de proyecto, su Ficha y sus fotos/vídeos,
  * y devuelve la lista. Las fotos y vídeos de los proyectos publicados se comparten "por enlace" para que la
- * web pueda mostrarlos; la carpeta, las Fichas y lo que empieza por "_" siguen privados.
+ * web pueda mostrarlos; la carpeta, las Fichas y los borradores (lo que empieza por "_") siguen privados.
+ * Carpetas especiales: "_Clientes" (una subcarpeta por cliente, "01 Inditex"…, con sus fotos para el pase
+ * tipo GIF) y "_Showreel" (el vídeo del showreel en alta calidad). Sus fotos y vídeos también se comparten.
+ * Versión 2.
  */
 const KEY = "PEGA_AQUI_LA_CLAVE"; // la misma que DRIVE_SCRIPT_KEY en Vercel
 const ROOT_ID = "PEGA_AQUI_EL_ID_DE_LA_CARPETA"; // lo que va tras /folders/ en la dirección de "2894_ Proyectos"
@@ -16,13 +19,37 @@ function doGet(e) {
   if (!e || !e.parameter || e.parameter.key !== KEY) return json({ error: "No autorizado" });
   const root = DriveApp.getFolderById(ROOT_ID);
   const projects = [];
+  const clients = [];
+  let showreel = null;
   const it = root.getFolders();
   while (it.hasNext()) {
     const folder = it.next();
-    if (folder.getName().trim().charAt(0) === "_") continue; // borradores
-    projects.push(readProject(folder));
+    const name = folder.getName().trim();
+    if (/^_clientes$/i.test(name)) {
+      const ci = folder.getFolders();
+      while (ci.hasNext()) {
+        const c = ci.next();
+        if (c.getName().trim().charAt(0) === "_") continue;
+        clients.push({ id: c.getId(), name: c.getName(), files: mediaIn(c) });
+      }
+    } else if (/^_showreel$/i.test(name)) {
+      const videos = mediaIn(folder).filter(function (m) { return /^video\//.test(m.mimeType); });
+      showreel = videos.length ? videos[0] : null;
+    } else if (name.charAt(0) !== "_") {
+      projects.push(readProject(folder)); // las demás carpetas con "_" son borradores
+    }
   }
-  return json({ projects: projects, generated: new Date().toISOString() });
+  return json({ projects: projects, clients: clients, showreel: showreel, generated: new Date().toISOString() });
+}
+
+function mediaIn(folder) {
+  const out = [];
+  const it = folder.getFiles();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (isMedia(f.getMimeType())) out.push(media(f));
+  }
+  return out;
 }
 
 function readProject(folder) {
