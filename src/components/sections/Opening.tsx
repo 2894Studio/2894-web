@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CloudSky, SKY_DEFAULTS, type SkyControls } from "@/components/CloudSky";
+import { CloudSky } from "@/components/CloudSky";
 import { ProjectSphere } from "@/components/ProjectSphere";
 import { Hero } from "@/components/sections/Hero";
 import { Projects } from "@/components/sections/Projects";
@@ -10,11 +10,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { SphereItem } from "@/lib/projects";
 
 // Apertura: showreel con el cielo de nubes por debajo → Proyectos, en una sola escena guiada por el scroll.
-// Dos transiciones para comparar (se elige con ?t=a o ?t=b en la dirección; por defecto A):
-//   A · "El vídeo es el primer proyecto": el vídeo se encoge sobre el cielo hasta el tamaño de una ficha y
-//       vuela a su sitio en la esfera; el cielo pasa a blanco y aparecen las demás fichas.
-//   B · "Se abre el cielo": el vídeo se aleja y se funde en el cielo; las nubes se apartan desde el centro y
-//       de entre ellas emerge la esfera de proyectos.
+// "El vídeo es el primer proyecto": el vídeo se encoge sobre el cielo hasta el tamaño de una ficha y vuela a su
+// sitio en la esfera; el cielo pasa a blanco y aparecen las demás fichas.
 const TRACK_SVH = 320;
 const PROJECTS_AT = 0.62; // la esfera ya está formada (destino del ancla #proyectos)
 const SKY = "linear-gradient(180deg,#0a62ae 0%,#0b84ca 58%,#4ea6d8 100%)";
@@ -44,13 +41,11 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
   const projectsEl = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const cards = useRef<(HTMLDivElement | null)[]>([]);
-  const skyCtrl = useRef<SkyControls>({ ...SKY_DEFAULTS });
   const [skyOn, setSkyOn] = useState(true);
 
   useEffect(() => {
     const st = stage.current, tr = track.current;
     if (!st || !tr) return;
-    const variant = new URLSearchParams(window.location.search).get("t") === "b" ? "b" : "a";
     let raf = 0, inView = true;
     const io = new IntersectionObserver(([e]) => (inView = e.isIntersecting));
     io.observe(tr);
@@ -72,62 +67,37 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
       const radius = a * 40;
 
       if (head && fr) {
-        if (variant === "a") {
-          // 2A · El vídeo vuela hasta la ficha del primer proyecto (la sigue aunque la esfera gire).
-          const f = easeInOut(seg(p, 0.14, 0.5));
-          const card = cards.current[0];
-          const sr = st.getBoundingClientRect();
-          const cr = card?.getBoundingClientRect();
-          const tx = cr ? cr.left - sr.left : W / 2, ty = cr ? cr.top - sr.top : H / 2;
-          const tw = cr ? cr.width : 0, th = cr ? cr.height : 0;
-          const x = lerp(inset, tx, f), y = lerp(inset, ty, f);
-          const w = lerp(W - 2 * inset, tw, f), h = lerp(H - 2 * inset, th, f);
-          Object.assign(head.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto", padding: "0" });
-          fr.style.borderRadius = `${lerp(radius, 6, f)}px`;
-          // Al posarse, el vídeo se funde con la ficha.
-          const land = smooth(seg(p, 0.5, 0.58));
-          head.style.opacity = String(1 - land);
-          head.style.visibility = land >= 1 ? "hidden" : "";
-        } else {
-          // 2B · El vídeo se aleja hacia el fondo y se funde en el cielo.
-          const g = smooth(seg(p, 0.12, 0.34));
-          head.style.padding = `${inset}px`;
-          head.style.transform = `scale(${lerp(1, 0.55, g)})`;
-          head.style.opacity = String(1 - g);
-          head.style.visibility = g >= 1 ? "hidden" : "";
-          fr.style.borderRadius = `${radius + g * 40}px`;
-        }
+        // 2 · El vídeo vuela hasta la ficha del primer proyecto (la sigue aunque la esfera gire).
+        const f = easeInOut(seg(p, 0.14, 0.5));
+        const card = cards.current[0];
+        const sr = st.getBoundingClientRect();
+        const cr = card?.getBoundingClientRect();
+        const tx = cr ? cr.left - sr.left : W / 2, ty = cr ? cr.top - sr.top : H / 2;
+        const tw = cr ? cr.width : 0, th = cr ? cr.height : 0;
+        const x = lerp(inset, tx, f), y = lerp(inset, ty, f);
+        const w = lerp(W - 2 * inset, tw, f), h = lerp(H - 2 * inset, th, f);
+        Object.assign(head.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto", padding: "0" });
+        fr.style.borderRadius = `${lerp(radius, 6, f)}px`;
+        // Al posarse, el vídeo se funde con la ficha.
+        const land = smooth(seg(p, 0.5, 0.58));
+        head.style.opacity = String(1 - land);
+        head.style.visibility = land >= 1 ? "hidden" : "";
       }
 
-      // 3 · Cielo: A se desvanece a blanco; B se abre desde el centro (las nubes se apartan) y se acerca.
+      // 3 · El cielo se desvanece a blanco.
       if (sky.current) {
         const s = sky.current.style;
-        if (variant === "a") {
-          const out = smooth(seg(p, 0.36, 0.56));
-          s.opacity = String(1 - out);
-          s.setProperty("mask-image", "none");
-          s.setProperty("-webkit-mask-image", "none");
-          s.transform = "";
-        } else {
-          const o = easeInOut(seg(p, 0.26, 0.58));
-          const gap = o * 60; // % de la mitad de la pantalla que queda abierto
-          const m = `linear-gradient(90deg, #000 0%, #000 ${50 - gap}%, transparent ${50 - gap + 12}%, transparent ${50 + gap - 12}%, #000 ${50 + gap}%, #000 100%)`;
-          s.setProperty("mask-image", o > 0 ? m : "none");
-          s.setProperty("-webkit-mask-image", o > 0 ? m : "none");
-          s.transform = `scale(${lerp(1, 1.3, o)})`;
-          s.opacity = String(1 - smooth(seg(p, 0.5, 0.62)));
-        }
+        const out = smooth(seg(p, 0.36, 0.56));
+        s.opacity = String(1 - out);
         const visible = Number(s.opacity) > 0.001;
         setSkyOn((v) => (v === visible ? v : visible));
       }
-      skyCtrl.current.wind = variant === "b" ? lerp(1, 6, seg(p, 0.2, 0.6)) : 1;
 
-      // 4 · Proyectos: las fichas aparecen (A: alrededor del vídeo; B: emergen de entre las nubes).
+      // 4 · Proyectos: las fichas aparecen alrededor del vídeo.
       if (projectsEl.current) {
         const pe = projectsEl.current.style;
-        const k = variant === "a" ? smooth(seg(p, 0.3, 0.52)) : smooth(seg(p, 0.32, 0.58));
+        const k = smooth(seg(p, 0.3, 0.52));
         pe.opacity = String(k);
-        pe.transform = variant === "b" ? `scale(${lerp(0.72, 1, k)})` : "";
         pe.pointerEvents = k > 0.95 ? "auto" : "none";
       }
       const ttl = seg(p, 0.52, 0.62);
@@ -150,8 +120,8 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
       <div id="proyectos" data-anchor aria-hidden className="pointer-events-none absolute left-0 w-px" style={{ top: `${PROJECTS_AT * (TRACK_SVH - 100)}svh` }} />
       <div ref={stage} className="sticky top-0 h-svh overflow-hidden bg-cloud">
         {/* Cielo con nubes por debajo del vídeo */}
-        <div ref={sky} aria-hidden className="absolute inset-0 will-change-transform" style={{ backgroundImage: SKY }}>
-          <CloudSky active={skyOn} lit="#f6f3ea" shade="#a7b7cc" controls={skyCtrl} />
+        <div ref={sky} aria-hidden className="absolute inset-0" style={{ backgroundImage: SKY }}>
+          <CloudSky active={skyOn} lit="#f6f3ea" shade="#a7b7cc" />
         </div>
 
         {/* Proyectos (debajo del vídeo mientras vuela) */}
