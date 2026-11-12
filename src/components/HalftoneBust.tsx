@@ -10,6 +10,9 @@ const DEPTH = "/brand/head-depth.png";
 const SAMPLE_W = 90; // columnas de la trama (la altura sale de la proporción del busto)
 const SHIFT = 0.05; // desplazamiento máximo (fracción del ancho) de los puntos más cercanos
 const SPRING = 0.08;
+// Recorte a la silueta (fracciones del PNG: izquierda, arriba, derecha, abajo): sin márgenes vacíos, el busto llena su caja.
+export const BUST_BOX = [0.206, 0.108, 0.752, 0.882] as const;
+export const BUST_ASPECT = ((BUST_BOX[2] - BUST_BOX[0]) * 2126) / ((BUST_BOX[3] - BUST_BOX[1]) * 3036);
 
 type Dot = { x: number; y: number; r: number; d: number };
 
@@ -27,7 +30,9 @@ function sample(im: HTMLImageElement, w: number, h: number) {
   c.width = w;
   c.height = h;
   const g = c.getContext("2d", { willReadFrequently: true })!;
-  g.drawImage(im, 0, 0, w, h);
+  const [l, t, r, b] = BUST_BOX;
+  const W = im.naturalWidth, H = im.naturalHeight;
+  g.drawImage(im, l * W, t * H, (r - l) * W, (b - t) * H, 0, 0, w, h);
   return g.getImageData(0, 0, w, h).data;
 }
 
@@ -91,7 +96,7 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
       .then(([im, dm]) => {
         if (!alive) return;
         cols = SAMPLE_W;
-        rows = Math.round((SAMPLE_W * im.naturalHeight) / im.naturalWidth);
+        rows = Math.round(SAMPLE_W / BUST_ASPECT);
         const px = sample(im, cols, rows), dp = sample(dm, cols, rows);
         dots = [];
         for (let y = 0; y < rows; y++)
