@@ -14,7 +14,10 @@ export type ProjectEntry = {
   client?: string;
   year?: number;
   summary: string;
-  link?: string;
+  link?: string; // botón "Ir a la web"
+  designSystem?: string; // botón "Ver sistema de diseño"
+  video?: Media; // vídeo principal del proyecto (archivo "video.*" o el primero que haya)
+  openVideo: boolean; // al pulsarlo en la esfera se abre el vídeo a pantalla completa
   cover: Media;
   media: Media[]; // todas las fotos y vídeos del proyecto, en orden (la portada primero)
   carousel: Media[]; // carrusel opcional bajo el texto (carpeta "Carrusel")
@@ -34,6 +37,7 @@ const sample = (slug: string, title: string, category: string, i: number, client
     category,
     client,
     summary: "Texto de ejemplo: qué se pidió, cómo lo abordamos y qué cambió para el equipo.",
+    openVideo: false,
     cover: media[0],
     media,
     carousel: i % 2 === 0 ? media.slice(1) : [],
@@ -74,6 +78,8 @@ function readProject(p: CatalogProject) {
   if (!coverFile) return null; // sin imágenes ni vídeos no se publica
   const media = [coverFile, ...own.filter((m) => m !== coverFile)].map((m) => toMedia(m.f, title)).filter((m): m is Media => !!m);
   const carousel = [...p.carousel].sort(byName).map((f) => toMedia(f, title)).filter((m): m is Media => !!m);
+  const videoFile = own.find((m) => m.kind === "video" && /^v[ií]deo\b/i.test(m.name)) ?? own.find((m) => m.kind === "video");
+  const video = videoFile ? (toMedia(videoFile.f, title) ?? undefined) : undefined;
 
   const entry: ProjectEntry = {
     slug: info.slug || p.id,
@@ -83,6 +89,9 @@ function readProject(p: CatalogProject) {
     year: fields.year,
     summary: fields.summary ?? "",
     link: fields.link,
+    designSystem: fields.designSystem,
+    video,
+    openVideo: !!(fields.openVideo && video),
     cover: media[0],
     media,
     carousel,
@@ -99,26 +108,32 @@ async function getCatalog(): Promise<Catalog> {
   return fetchCatalog();
 }
 
-// Fotos de cada cliente (carpeta "_Clientes" de Drive) para el pase tipo GIF de la sección Clientes.
-// Clave: nombre del cliente en minúsculas ("01 Inditex" → "inditex").
-export async function getClientMedia(): Promise<Record<string, string[]>> {
+// Carpeta "_Clientes" de Drive: en cada subcarpeta ("01 Inditex"…) el archivo "logo.*" es el logo del cliente y
+// el resto de fotos forman el pase tipo GIF. Clave: nombre del cliente en minúsculas ("01 Inditex" → "inditex").
+export type ClientMedia = { frames: Record<string, string[]>; logos: Record<string, string> };
+export async function getClientMedia(): Promise<ClientMedia> {
   "use cache";
   cacheTag("projects");
+  const empty: ClientMedia = { frames: {}, logos: {} };
   if (!driveReady()) {
     cacheLife("minutes");
-    return {};
+    return empty;
   }
   try {
-    const out: Record<string, string[]> = {};
+    const out: ClientMedia = { frames: {}, logos: {} };
     for (const c of (await getCatalog()).clients) {
-      const imgs = [...c.files].sort(byName).filter((f) => mediaKind(f.mimeType) === "image").map((f) => `${IMG_BASE}/d/${f.id}=w800`);
-      if (imgs.length) out[folderInfo(c.name).label.toLowerCase()] = imgs;
+      const key = folderInfo(c.name).label.toLowerCase();
+      const imgs = [...c.files].sort(byName).filter((f) => mediaKind(f.mimeType) === "image");
+      const logo = imgs.find((f) => /^logo\b/i.test(f.name.trim()));
+      if (logo) out.logos[key] = `${IMG_BASE}/d/${logo.id}=w800`;
+      const frames = imgs.filter((f) => f !== logo).map((f) => `${IMG_BASE}/d/${f.id}=w800`);
+      if (frames.length) out.frames[key] = frames;
     }
     cacheLife("hours");
     return out;
   } catch {
     cacheLife("seconds");
-    return {};
+    return empty;
   }
 }
 
@@ -168,6 +183,8 @@ export type SphereItem = {
   frames: string[]; // fotos del proyecto para el pase "como vídeo"
   video?: string; // vídeo que se reproduce al pasar el ratón (proyectos de vídeo)
   review: string;
+  links: { label: string; href: string }[]; // botones de la reseña (web, sistema de diseño)
+  clickVideo?: { src: string; poster?: string }; // vídeo que se abre a pantalla completa al pulsar el proyecto
 };
 export const toSphere = (p: ProjectEntry): SphereItem => {
   const images = p.media.filter((m) => m.kind === "image").map((m) => m.src);
@@ -181,5 +198,10 @@ export const toSphere = (p: ProjectEntry): SphereItem => {
     frames: images.slice(0, 24),
     video: videoProject ? (p.cover.kind === "video" ? p.cover.src : firstVideo?.src) : undefined,
     review: p.summary,
+    links: [
+      ...(p.link ? [{ label: "Ir a la web", href: p.link }] : []),
+      ...(p.designSystem ? [{ label: "Ver sistema de diseño", href: p.designSystem }] : []),
+    ],
+    clickVideo: p.openVideo && p.video ? { src: p.video.src, poster: p.video.poster } : undefined,
   };
 };

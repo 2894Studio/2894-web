@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { gsap } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { nav, studio } from "@/content/site";
+import { legal, nav, partners, studio } from "@/content/site";
 import { stock } from "@/content/stock";
 
 // Letras con máscara para revelarlas; el guion del logo parpadea (.blink).
@@ -39,7 +39,7 @@ const mailHref = `mailto:${studio.email}?subject=${encodeURIComponent("Proyecto 
 // Primero el contacto (correo y teléfono, con acción directa); la navegación queda al final.
 export function Footer() {
   const reduced = useReducedMotion();
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +62,8 @@ export function Footer() {
   }, [reduced]);
 
   return (
-    <footer ref={root} id="contacto" className={reduced ? "" : "h-[240svh]"}>
+    <footer id="contacto">
+      <div ref={root} className={reduced ? "" : "h-[240svh]"}>
       <div ref={stage} className={`flex flex-col px-[var(--gutter)] pt-[clamp(4rem,10vh,8rem)] ${reduced ? "bg-cobalt text-cloud" : "sticky top-0 h-svh bg-cloud text-ink"}`}>
         <h2 data-head className="text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
           <span className="sr-only">Contacto</span>
@@ -104,7 +105,7 @@ export function Footer() {
         </div>
 
         {/* Al final de todo: navegación, ubicación y créditos */}
-        <div data-reveal className="flex flex-wrap items-center gap-x-6 gap-y-1 pb-24 text-sm">
+        <div data-reveal className="flex flex-wrap items-center gap-x-6 gap-y-1 pb-6 text-sm">
           <ul className="flex flex-wrap gap-x-5">
             {nav.map((n) => (
               <li key={n.href}>
@@ -127,6 +128,49 @@ export function Footer() {
               ))}
             </ul>
           </details>
+        </div>
+      </div>
+      </div>
+
+      {/* Pie legal: colaboraciones, dirección y políticas. */}
+      <div className="bg-cobalt px-[var(--gutter)] pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-10 text-cloud">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-cloud/25 pt-8">
+          <p className="text-sm uppercase tracking-wide opacity-80">Colaboramos con</p>
+          <ul className="flex flex-wrap items-center gap-x-10 gap-y-4">
+            {partners.map((pt) => (
+              <li key={pt.name}>
+                <a href={pt.href} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center opacity-90 hover:opacity-100">
+                  {pt.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- logos SVG locales en blanco
+                    <img src={pt.logo} alt={pt.name} className="h-9 w-auto brightness-0 invert" />
+                  ) : (
+                    <span className="text-2xl font-bold tracking-tight">{pt.name}</span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mt-8 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 text-sm">
+          <address className="not-italic opacity-90">
+            {legal.owner || "2894_ Studio"}
+            <br />
+            {legal.street ? `${legal.street}, ${legal.postalCode} ${legal.city}` : legal.city}
+          </address>
+          <ul className="flex flex-wrap gap-x-6">
+            {[
+              ["Aviso legal", "/aviso-legal"],
+              ["Privacidad", "/privacidad"],
+              ["Cookies", "/cookies"],
+            ].map(([label, href]) => (
+              <li key={href}>
+                <a href={href} className="inline-block min-h-11 py-3 underline-offset-4 hover:underline">
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="py-3 opacity-80">© 2026 2894_ Studio</p>
         </div>
       </div>
     </footer>

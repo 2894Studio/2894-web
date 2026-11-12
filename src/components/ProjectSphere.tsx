@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
+import { VideoLightbox } from "@/components/VideoLightbox";
 
 type Project = SphereItem;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -112,6 +113,7 @@ export function ProjectSphere({
   const label = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<Project | null>(null);
   const [pinned, setPinned] = useState<Project | null>(null);
+  const [playing, setPlaying] = useState<Project | null>(null); // proyecto de vídeo abierto a pantalla completa
   const [inside, setInside] = useState(false);
   const [onScreen, setOnScreen] = useState(false); // con la esfera a la vista, todas las fichas se mueven (como GIFs)
   const [front, setFront] = useState(projects[0].title);
@@ -277,7 +279,7 @@ export function ProjectSphere({
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPinned(null);
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest("[data-sphere-card]") && !t.closest("[data-review]")) setPinned(null);
+      if (!t.closest("[data-sphere-card]") && !t.closest("[data-review]") && !t.closest("dialog")) setPinned(null);
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onDown);
@@ -303,12 +305,19 @@ export function ProjectSphere({
           <div key={p.id} ref={(n) => { cards.current[i] = n; }} data-sphere-card className="absolute left-1/2 top-1/2 opacity-0">
             <button
               type="button"
-              aria-label={`${p.title}, ${p.category}. Ver reseña`}
+              aria-label={`${p.title}, ${p.category}. ${p.clickVideo ? "Ver vídeo" : "Ver reseña"}`}
               aria-pressed={pinned?.id === p.id}
               onPointerEnter={() => setHovered(p)}
               onFocus={() => setHovered(p)}
               onBlur={() => setHovered((h) => (h?.id === p.id ? null : h))}
-              onClick={() => !moved.current && setPinned((cur) => (cur?.id === p.id ? null : p))}
+              onClick={() => {
+                if (moved.current) return;
+                if (p.clickVideo) {
+                  // Proyectos de vídeo: se abren directamente a pantalla completa (y quedan fijados al cerrar).
+                  setPinned(p);
+                  setPlaying(p);
+                } else setPinned((cur) => (cur?.id === p.id ? null : p));
+              }}
               className={`group relative block h-full w-full overflow-hidden transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
               <CardMedia item={p} index={i} active={onScreen || hovered?.id === p.id || pinned?.id === p.id} />
@@ -329,7 +338,18 @@ export function ProjectSphere({
             <h3 className="mt-2 text-3xl font-light uppercase tracking-tight">{shown.title}</h3>
             <p className="mt-3 text-base">{shown.review}</p>
             {/* "Ver caso" retirado por ahora: las páginas /proyectos/<slug> siguen existiendo. */}
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {pinned && shown.clickVideo && (
+                <button type="button" onClick={() => setPlaying(shown)} className="spring min-h-11 rounded-full bg-cobalt px-5 text-sm font-medium uppercase text-cloud hover:bg-ink">
+                  Ver vídeo
+                </button>
+              )}
+              {pinned &&
+                shown.links.map((l) => (
+                  <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="spring inline-flex min-h-11 items-center gap-2 rounded-full bg-cobalt px-5 text-sm font-medium uppercase text-cloud hover:bg-ink">
+                    {l.label} <span aria-hidden>↗</span>
+                  </a>
+                ))}
               {pinned && (
                 <button type="button" onClick={() => setPinned(null)} className="spring min-h-11 rounded-full border border-ink px-4 text-sm font-medium uppercase hover:bg-ink hover:text-cloud">
                   Cerrar
@@ -351,6 +371,8 @@ export function ProjectSphere({
           </span>
         </span>
       </div>
+
+      <VideoLightbox video={playing?.clickVideo ?? null} title={playing?.title ?? ""} onClose={() => setPlaying(null)} />
 
       <p aria-hidden className={`mt-4 text-center text-lg font-light uppercase tracking-tight [@media(hover:hover)_and_(pointer:fine)]:hidden ${shown ? "hidden" : ""}`}>
         {front}

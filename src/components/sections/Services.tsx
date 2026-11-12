@@ -283,6 +283,20 @@ export function Services({ images }: { images: ApplyImage[] }) {
               >
                 {s.text}
               </p>
+              {/* Servicios de esta fase: burbujas rectangulares que entran una a una. */}
+              <ul aria-label={`Servicios de ${s.key}`} className="relative mt-8 flex max-w-3xl flex-wrap justify-center gap-3">
+                {s.items.map((it, k) => (
+                  <li
+                    key={it}
+                    className={`rounded-2xl border px-5 py-3 text-base font-medium backdrop-blur-md transition-[transform,opacity] duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] sm:text-lg ${
+                      isDark ? "border-white/40 bg-white/85 text-ink" : "border-ink/10 bg-white/80 text-ink shadow-[0_8px_30px_rgba(10,70,255,0.08)]"
+                    }`}
+                    style={{ transform: on ? "translateY(0) scale(1)" : "translateY(24px) scale(0.9)", opacity: on ? 1 : 0, transitionDelay: on ? `${400 + k * 110}ms` : "0ms" }}
+                  >
+                    {it}
+                  </li>
+                ))}
+              </ul>
             </div>
           );
         })}

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Logo } from "@/components/Logo";
 import { CoverVideo } from "@/components/CoverVideo";
 import { ProjectCarousel } from "@/components/ProjectCarousel";
-import { getProject, getProjects } from "@/lib/projects";
+import { getProject, getProjects, toSphere } from "@/lib/projects";
 
 export async function generateStaticParams() {
   return (await getProjects()).map((p) => ({ slug: p.slug }));
@@ -21,6 +21,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const p = await getProject((await params).slug);
   if (!p) notFound();
   const meta = [p.client, p.year, p.category].filter(Boolean).join(" · ");
+  const links = toSphere(p).links;
   return (
     <main className="min-h-svh bg-cloud px-[var(--gutter)] pb-24 pt-8 text-ink">
       <nav aria-label="Volver" className="flex items-center justify-between">
@@ -36,6 +37,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         {meta && <p className="text-sm uppercase tracking-wide text-ink/70">{meta}</p>}
         <h1 className="mt-3 text-[clamp(2.6rem,8vw,7rem)] font-light uppercase leading-none tracking-[-0.04em] text-balance">{p.title}</h1>
         {p.summary && <p className="mt-6 max-w-2xl text-xl">{p.summary}</p>}
+        {links.length > 0 && (
+          <div className="mt-8 flex flex-wrap gap-3">
+            {links.map((l) => (
+              <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="spring inline-flex min-h-12 items-center gap-2 rounded-full bg-cobalt px-6 font-medium text-cloud hover:bg-ink">
+                {l.label} <span aria-hidden>↗</span>
+              </a>
+            ))}
+          </div>
+        )}
       </header>
 
       <figure className="relative mt-12 overflow-hidden rounded-3xl bg-ink/5" style={{ aspectRatio: p.cover.width && p.cover.height && p.cover.width > p.cover.height ? `${p.cover.width} / ${p.cover.height}` : "16 / 9" }}>
@@ -56,11 +66,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
 
       {p.carousel.length > 0 && <ProjectCarousel items={p.carousel} title={p.title} />}
 
-      {p.link && (
-        <a href={p.link} target="_blank" rel="noreferrer" className="spring mt-12 inline-flex min-h-12 items-center rounded-full bg-cobalt px-6 font-medium text-cloud hover:bg-ink">
-          Ver el proyecto
-        </a>
-      )}
     </main>
   );
 }

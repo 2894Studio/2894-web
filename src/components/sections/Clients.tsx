@@ -5,15 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { SectionTitle } from "@/components/SectionTitle";
 import { clients } from "@/content/site";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
+import type { ClientMedia } from "@/lib/projects";
 
 const FRAME_MS = 420; // como el pase de los proyectos
 
 // Clientes en lista (referencia: Dash). Cada fila responde con rebote; la imagen del cliente sigue al cursor.
 // Si el cliente tiene fotos en Drive (carpeta "_Clientes"), la imagen va pasando por todas, como un GIF.
-export function Clients({ media = {} }: { media?: Record<string, string[]> }) {
+// Si tiene logo ("logo.*" en su carpeta), se muestra el logo en vez del nombre: en tinta, y en su color al pasar por encima.
+export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientMedia }) {
   const [hover, setHover] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
-  const framesOf = (name: string, fallback: string) => media[name.toLowerCase()] ?? [fallback];
+  const framesOf = (name: string, fallback: string) => media.frames[name.toLowerCase()] ?? [fallback];
   const hoverFrames = hover === null ? 0 : framesOf(clients[hover].name, clients[hover].image).length;
   useEffect(() => {
     if (hoverFrames < 2 || window.matchMedia(REDUCED).matches) return;
@@ -48,9 +50,21 @@ export function Clients({ media = {} }: { media?: Record<string, string[]> }) {
               href="#"
               className="grid w-full grid-cols-[1fr_auto] items-center gap-x-6 gap-y-1 py-6 uppercase focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cobalt sm:grid-cols-[2fr_3fr_auto] sm:py-8"
             >
-              <span className="text-[clamp(1.75rem,4.5vw,3.5rem)] font-light leading-none tracking-[-0.03em] transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4 group-hover:text-cobalt">
-                {c.name}
-              </span>
+              {media.logos[c.name.toLowerCase()] ? (
+                <span className="flex h-[clamp(2rem,5vw,3.75rem)] items-center transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- logos de proporción libre, servidos por Google */}
+                  <img
+                    src={media.logos[c.name.toLowerCase()]}
+                    alt={c.name}
+                    loading="lazy"
+                    className="h-full w-auto max-w-[min(60vw,22rem)] object-contain object-left brightness-0 transition-[filter] duration-500 group-hover:filter-none group-focus-visible:filter-none"
+                  />
+                </span>
+              ) : (
+                <span className="text-[clamp(1.75rem,4.5vw,3.5rem)] font-light leading-none tracking-[-0.03em] transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4 group-hover:text-cobalt">
+                  {c.name}
+                </span>
+              )}
               <span className="order-3 col-span-2 text-sm tracking-wide sm:order-none sm:col-span-1">{c.disciplines.join(" · ")}</span>
               <span className="spring inline-flex min-h-11 items-center text-sm font-medium tracking-wide group-hover:text-cobalt">
                 View more <span aria-hidden className="ml-2 transition-transform duration-500 group-hover:translate-x-1">→</span>

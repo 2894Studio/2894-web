@@ -6,11 +6,22 @@
 //   Cliente: DPROMA
 //   Año: 2025
 //   Resumen: Una o dos frases (la reseña que aparece en la esfera)
-//   Enlace: https://… (opcional)
+//   Web: https://… (opcional: botón "Ir a la web"; también vale "Enlace:")
+//   Sistema de diseño: https://… (opcional: botón "Ver sistema de diseño")
+//   Al hacer clic: vídeo (opcional: al pulsar el proyecto en la esfera se abre su vídeo a pantalla completa)
 //   ---
 //   Texto del proyecto (párrafos, títulos, negrita, cursiva, listas y enlaces del Doc).
 
-export type Fields = { title?: string; category?: string; client?: string; year?: number; summary?: string; link?: string };
+export type Fields = {
+  title?: string;
+  category?: string;
+  client?: string;
+  year?: number;
+  summary?: string;
+  link?: string;
+  designSystem?: string;
+  openVideo?: boolean;
+};
 
 const KEYS: Record<string, keyof Fields> = {
   titulo: "title", title: "title",
@@ -18,7 +29,9 @@ const KEYS: Record<string, keyof Fields> = {
   cliente: "client", client: "client",
   ano: "year", year: "year",
   resumen: "summary", resena: "summary", summary: "summary",
-  enlace: "link", link: "link", url: "link",
+  enlace: "link", link: "link", url: "link", web: "link",
+  "sistema de diseno": "designSystem", "design system": "designSystem",
+  "al hacer clic": "openVideo", "al hacer click": "openVideo", "al pulsar": "openVideo",
 };
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 const isSep = (line: string) => /^\s*[-—–_]{3,}\s*$/.test(line);
@@ -28,7 +41,7 @@ export function parseFields(plain: string): Fields {
   const out: Fields = {};
   for (const raw of plain.replace(/^﻿/, "").split(/\r?\n/)) {
     if (isSep(raw)) break;
-    const m = raw.match(/^\s*([^:]{2,20}):\s*(.*)$/);
+    const m = raw.match(/^\s*([^:]{2,24}):\s*(.*)$/);
     if (!m) continue;
     const key = KEYS[norm(m[1])];
     const val = m[2].trim();
@@ -36,8 +49,10 @@ export function parseFields(plain: string): Fields {
     if (key === "year") {
       const y = parseInt(val, 10);
       if (y > 1900 && y < 3000) out.year = y;
-    } else if (key === "link") {
-      if (/^https?:\/\//i.test(val)) out.link = val;
+    } else if (key === "link" || key === "designSystem") {
+      if (/^https?:\/\//i.test(val)) out[key] = val;
+    } else if (key === "openVideo") {
+      out.openVideo = /^v[ií]deo/i.test(val);
     } else out[key] = val;
   }
   return out;

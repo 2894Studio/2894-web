@@ -16,10 +16,27 @@ export const studio = {
   email: "hola@2894.studio", // TODO: confirmar email real
 };
 
+// Datos legales (aviso legal, privacidad, cookies). TODO: los aporta el estudio; mientras, se ve "[pendiente]".
+export const legal = {
+  owner: "", // titular: razón social (p. ej. "2894 Studio S.L.") o nombre y apellidos si es autónomo
+  taxId: "", // NIF / CIF
+  street: "", // calle y número
+  postalCode: "", // código postal
+  city: "Madrid",
+  registry: "", // datos del Registro Mercantil (solo sociedades)
+  updated: "noviembre de 2026",
+};
+
+// Colaboraciones (logos en /public/brand/partners). TODO: sustituir por los logos oficiales.
+export const partners = [
+  { name: "IE University", href: "https://www.ie.edu/university/", logo: "" },
+  { name: "UDIT", href: "https://www.udit.es/", logo: "" },
+];
+
 export const nav = [
   { label: "Proyectos", href: "#proyectos" },
-  { label: "Servicios", href: "#servicios" },
   { label: "Clientes", href: "#clients" },
+  { label: "Servicios", href: "#servicios" },
   { label: "Contacto", href: "#contacto" },
 ];
 
@@ -52,10 +69,20 @@ export const projects = list.map(([title, category], i) => ({
 export type Project = (typeof projects)[number];
 
 // Fuente de los textos: LinkedIn de 2894_ (Grow: resumen del apartado "más allá de la eficiencia"; validar con el cliente).
+// Servicios repartidos por fase (propuesta, pendiente de validar con el estudio):
+// Discover = entender y decidir · Apply = construir con IA · Grow = que el equipo y la organización lo sostengan.
 export const services = [
-  { key: "Discover", text: "Research, formaciones, benchmark e identificación de problemas." },
-  { key: "Apply", text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento." },
-  { key: "Grow", text: "Crecimiento y madurez del equipo, visión estratégica y nuevas formas de creación." },
+  { key: "Discover", text: "Research, formaciones, benchmark e identificación de problemas.", items: ["Investigación", "Consultoría"] },
+  {
+    key: "Apply",
+    text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento.",
+    items: ["Creación de herramientas", "Creación de productos", "Creación de contenido con IA"],
+  },
+  {
+    key: "Grow",
+    text: "Crecimiento y madurez del equipo, visión estratégica y nuevas formas de creación.",
+    items: ["Formaciones", "Sistema de diseño", "Asesoramiento en políticas de IA"],
+  },
 ];
 
 // TODO: sustituir por los clientes y disciplinas reales; las imágenes salen en hover.
