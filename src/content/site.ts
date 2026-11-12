@@ -92,7 +92,7 @@ export const clients = [
   { name: "ING", logo: { src: "/brand/clients/ing.svg", ratio: 264.6 / 89.4 }, disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
   { name: "NATEEVO", logo: { src: "/brand/clients/nateevo.svg", ratio: 811 / 181 }, disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
   { name: "DPROMA", logo: { src: "/brand/clients/dproma.svg", ratio: 2546.8 / 1354.7, scale: 1.6 }, disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
-  { name: "MOA", logo: undefined as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
+  { name: "MOA", logo: { src: "/brand/clients/moa.png", ratio: 437 / 129 } as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
 ];
 
 // Showreel en alta calidad, servido desde la web (public/showreel, generado desde el original de Drive "_Showreel").
