@@ -68,7 +68,7 @@ export function Footer() {
       <div ref={root} className={reduced ? "" : "h-[240svh]"}>
       <div ref={stage} className={`flex flex-col px-[var(--gutter)] pt-[clamp(4rem,10vh,8rem)] ${reduced ? "bg-cobalt text-cloud" : "sticky top-0 h-svh bg-cloud text-ink"}`}>
         {/* Easter egg: el busto en trama de puntos blanca, sutil, en el hueco del contacto; sigue al ratón. */}
-        <div data-bust aria-hidden className="pointer-events-none absolute right-[var(--gutter)] top-[clamp(4rem,10vh,8rem)] hidden aspect-[2126/3036] h-[min(60svh,46vw)] opacity-70 md:block">
+        <div data-bust aria-hidden className="pointer-events-none absolute inset-y-0 right-[var(--gutter)] hidden aspect-[2126/3036] max-w-[48vw] opacity-70 md:block">
           <HalftoneBust className="h-full w-full" />
         </div>
 
