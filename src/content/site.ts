@@ -13,16 +13,16 @@ export const studio = {
   phone: "+34 622 016 300",
   whatsapp: "34622016300", // número en formato internacional para wa.me
   whatsappText: "Hola 2894_, me gustaría hablar sobre un proyecto.",
-  email: "hola@2894.studio", // TODO: confirmar email real
+  email: "operations2894@gmail.com",
 };
 
 // Datos legales (aviso legal, privacidad, cookies). TODO: los aporta el estudio; mientras, se ve "[pendiente]".
 export const legal = {
-  owner: "", // titular: razón social (p. ej. "2894 Studio S.L.") o nombre y apellidos si es autónomo
+  owner: "2894 Studio SL",
   taxId: "", // NIF / CIF
-  street: "", // calle y número
-  postalCode: "", // código postal
-  city: "Madrid",
+  street: "Calle Luarca 4, 4.º B",
+  postalCode: "", // TODO: código postal de Calle Luarca 4 (Fuenlabrada)
+  city: "Fuenlabrada (Madrid)",
   registry: "", // datos del Registro Mercantil (solo sociedades)
   updated: "noviembre de 2026",
 };

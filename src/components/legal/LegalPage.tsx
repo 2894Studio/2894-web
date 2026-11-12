@@ -26,11 +26,9 @@ export function OwnerBlock() {
       <li>
         <strong>Teléfono:</strong> <a href={`tel:${studio.phone.replace(/\s/g, "")}`}>{studio.phone}</a>
       </li>
-      {legal.registry && (
-        <li>
-          <strong>Registro:</strong> {legal.registry}
-        </li>
-      )}
+      <li>
+        <strong>Registro Mercantil:</strong> <Pending value={legal.registry} label="Registro Mercantil de Madrid, tomo, folio y hoja" />
+      </li>
     </ul>
   );
 }

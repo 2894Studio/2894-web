@@ -155,7 +155,7 @@ export function Footer() {
           <address className="not-italic opacity-90">
             {legal.owner || "2894_ Studio"}
             <br />
-            {legal.street ? `${legal.street}, ${legal.postalCode} ${legal.city}` : legal.city}
+            {[legal.street, [legal.postalCode, legal.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
           </address>
           <ul className="flex flex-wrap gap-x-6">
             {[
