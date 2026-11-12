@@ -142,7 +142,7 @@ export function Footer() {
                 <a href={pt.href} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center opacity-90 hover:opacity-100">
                   {pt.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element -- logos SVG locales en blanco
-                    <img src={pt.logo} alt={pt.name} className="h-9 w-auto brightness-0 invert" />
+                    <img src={pt.logo} alt={pt.name} className={`${pt.h} w-auto brightness-0 invert`} />
                   ) : (
                     <span className="text-2xl font-bold tracking-tight">{pt.name}</span>
                   )}

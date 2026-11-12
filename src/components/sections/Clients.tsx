@@ -52,7 +52,7 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
             >
               {media.logos[c.name.toLowerCase()] ? (
                 <span className="flex h-[clamp(2rem,5vw,3.75rem)] items-center transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- logos de proporción libre, servidos por Google */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- logo subido a Drive (proporción libre) */}
                   <img
                     src={media.logos[c.name.toLowerCase()]}
                     alt={c.name}
@@ -60,6 +60,14 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
                     className="h-full w-auto max-w-[min(60vw,22rem)] object-contain object-left brightness-0 transition-[filter] duration-500 group-hover:filter-none group-focus-visible:filter-none"
                   />
                 </span>
+              ) : c.logo ? (
+                // Logo oficial recortado como máscara: en tinta y, al pasar por encima, en cobalto.
+                <span
+                  role="img"
+                  aria-label={c.name}
+                  className="block max-w-[min(60vw,22rem)] bg-ink transition-[translate,background-color] duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] [mask-position:left_center] [mask-repeat:no-repeat] [mask-size:contain] group-hover:translate-x-4 group-hover:bg-cobalt"
+                  style={{ height: `calc(clamp(1.75rem,4.2vw,3.25rem) * ${("scale" in c.logo && c.logo.scale) || 1})`, aspectRatio: c.logo.ratio, maskImage: `url(${c.logo.src})`, WebkitMaskImage: `url(${c.logo.src})` }}
+                />
               ) : (
                 <span className="text-[clamp(1.75rem,4.5vw,3.5rem)] font-light leading-none tracking-[-0.03em] transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4 group-hover:text-cobalt">
                   {c.name}

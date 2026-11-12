@@ -27,10 +27,10 @@ export const legal = {
   updated: "noviembre de 2026",
 };
 
-// Colaboraciones (logos en /public/brand/partners). TODO: sustituir por los logos oficiales.
+// Colaboraciones (logos oficiales de sus webs, en /public/brand/partners).
 export const partners = [
-  { name: "IE University", href: "https://www.ie.edu/university/", logo: "" },
-  { name: "UDIT", href: "https://www.udit.es/", logo: "" },
+  { name: "IE University", href: "https://www.ie.edu/university/", logo: "/brand/partners/ie.svg", h: "h-12" },
+  { name: "UDIT", href: "https://www.udit.es/", logo: "/brand/partners/udit.png", h: "h-8" },
 ];
 
 export const nav = [
@@ -76,23 +76,23 @@ export const services = [
   {
     key: "Apply",
     text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento.",
-    items: ["Creación de herramientas", "Creación de productos", "Creación de contenido con IA"],
+    items: ["Creación de herramientas", "Creación de productos", "Sistema de diseño", "Creación de contenido con IA"],
   },
   {
     key: "Grow",
     text: "Crecimiento y madurez del equipo, visión estratégica y nuevas formas de creación.",
-    items: ["Formaciones", "Sistema de diseño", "Asesoramiento en políticas de IA"],
+    items: ["Formaciones", "Asesoramiento en políticas de IA"],
   },
 ];
 
 // TODO: sustituir por los clientes y disciplinas reales; las imágenes salen en hover.
 export const clients = [
   // Orden pedido por el estudio: Inditex, ING, Nateevo, DPROMA, MOA.
-  { name: "INDITEX", disciplines: ["Research", "Strategy", "Design", "Development"], image: stock[13].src, alt: stock[13].title },
-  { name: "ING", disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
-  { name: "NATEEVO", disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
-  { name: "DPROMA", disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
-  { name: "MOA", disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
+  { name: "INDITEX", logo: { src: "/brand/clients/inditex.svg", ratio: 320 / 65 }, disciplines: ["Research", "Strategy", "Design", "Development"], image: stock[13].src, alt: stock[13].title },
+  { name: "ING", logo: { src: "/brand/clients/ing.svg", ratio: 264.6 / 89.4 }, disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
+  { name: "NATEEVO", logo: { src: "/brand/clients/nateevo.svg", ratio: 811 / 181 }, disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
+  { name: "DPROMA", logo: { src: "/brand/clients/dproma.svg", ratio: 2546.8 / 1354.7, scale: 1.6 }, disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
+  { name: "MOA", logo: undefined as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
 ];
 
 // Showreel en alta calidad, servido desde la web (public/showreel, generado desde el original de Drive "_Showreel").
