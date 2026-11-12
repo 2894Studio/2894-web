@@ -51,8 +51,10 @@ function useHideOnScroll() {
       const y = window.scrollY, d = y - last;
       last = y;
       acc = Math.sign(d) === Math.sign(acc) ? acc + d : d;
-      const nearEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      if (y < 80 || nearEnd || acc < -24) setHidden(false);
+      // En el pie legal la barra se aparta para no taparlo.
+      const legal = document.querySelector("[data-legal]");
+      if (legal && legal.getBoundingClientRect().top < window.innerHeight - 40) return setHidden(true);
+      if (y < 80 || acc < -24) setHidden(false);
       else if (acc > 24) setHidden(true);
     };
     const onScroll = () => {
@@ -60,7 +62,8 @@ function useHideOnScroll() {
       clearTimeout(idle);
       idle = window.setTimeout(() => {
         acc = 0;
-        setHidden(false);
+        const legal = document.querySelector("[data-legal]");
+        if (!legal || legal.getBoundingClientRect().top >= window.innerHeight - 40) setHidden(false);
       }, 650);
     };
     window.addEventListener("scroll", onScroll, { passive: true });

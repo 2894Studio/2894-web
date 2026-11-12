@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { gsap } from "@/lib/gsap";
+import { HalftoneBust } from "@/components/HalftoneBust";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { legal, nav, partners, studio } from "@/content/site";
 import { stock } from "@/content/stock";
@@ -54,6 +55,7 @@ export function Footer() {
       tl.to(stage.current, { keyframes: { backgroundColor: ["#ffffff", "#e9f1fd", "#9ec5ff", "#0a46ff"], easeEach: "sine.inOut" }, duration: 1.4 }, 0)
         .to(stage.current, { color: "#ffffff", duration: 0.5, ease: "sine.inOut" }, 0.7)
         .from("[data-head] [data-char]", { yPercent: 110, stagger: 0.03, duration: 0.5, ease: "power2.out" }, 1.0)
+        .from("[data-bust]", { opacity: 0, scale: 0.94, duration: 0.6, ease: "power2.out" }, 1.05)
         .from("[data-reveal]", { y: 24, opacity: 0, stagger: 0.1, duration: 0.4, ease: "power2.out" }, 1.25)
         .from("[data-mark] [data-char]", { yPercent: 110, stagger: 0.05, duration: 0.6, ease: "power3.out" }, 1.35)
         .to({}, { duration: 0.3 });
@@ -65,6 +67,11 @@ export function Footer() {
     <footer id="contacto">
       <div ref={root} className={reduced ? "" : "h-[240svh]"}>
       <div ref={stage} className={`flex flex-col px-[var(--gutter)] pt-[clamp(4rem,10vh,8rem)] ${reduced ? "bg-cobalt text-cloud" : "sticky top-0 h-svh bg-cloud text-ink"}`}>
+        {/* Easter egg: el busto en trama de puntos blanca, sutil, en el hueco del contacto; sigue al ratón. */}
+        <div data-bust aria-hidden className="pointer-events-none absolute right-[var(--gutter)] top-[clamp(4rem,10vh,8rem)] hidden aspect-[2126/3036] h-[min(60svh,46vw)] opacity-70 md:block">
+          <HalftoneBust className="h-full w-full" />
+        </div>
+
         <h2 data-head className="text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
           <span className="sr-only">Contacto</span>
           <span aria-hidden>
@@ -133,7 +140,7 @@ export function Footer() {
       </div>
 
       {/* Pie legal: colaboraciones, dirección y políticas. */}
-      <div className="bg-cobalt px-[var(--gutter)] pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-10 text-cloud">
+      <div data-legal className="bg-cobalt px-[var(--gutter)] pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-10 text-cloud">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-cloud/25 pt-8">
           <p className="text-sm uppercase tracking-wide opacity-80">Colaboramos con</p>
           <ul className="flex flex-wrap items-center gap-x-10 gap-y-4">
