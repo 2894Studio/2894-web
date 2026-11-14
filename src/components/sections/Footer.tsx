@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
-import { BUST_ASPECT, HalftoneBust } from "@/components/HalftoneBust";
+import { getLenis } from "@/lib/lenis";
+import { BUST_ASPECT, HalftoneBust, type HalftoneHandle } from "@/components/HalftoneBust";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { legal, nav, partners, studio } from "@/content/site";
 import { stock } from "@/content/stock";
@@ -42,6 +44,41 @@ export function Footer() {
   const reduced = useReducedMotion();
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const burst = useRef<HalftoneHandle | null>(null);
+  const router = useRouter();
+  const [leaving, setLeaving] = useState(false);
+  // Clic en el busto: los puntos salen despedidos, la pantalla se funde a blanco y se abre la página del busto.
+  const openBust = () => {
+    if (leaving) return;
+    try {
+      sessionStorage.setItem("bust-from", "home"); // para que "Volver" regrese aquí mismo
+      sessionStorage.setItem("bust-return-y", String(window.scrollY));
+    } catch {}
+    if (reduced) return router.push("/busto");
+    setLeaving(true);
+    burst.current?.burst();
+    window.setTimeout(() => router.push("/busto"), 750);
+  };
+
+  // Al volver de la página del busto, la web se coloca de nuevo en el cierre (donde se hizo clic).
+  useEffect(() => {
+    let y: number | null = null;
+    try {
+      const v = sessionStorage.getItem("bust-return-y");
+      sessionStorage.removeItem("bust-return-y");
+      if (v) y = Number(v);
+    } catch {}
+    if (y === null || !Number.isFinite(y)) return;
+    // Varios intentos: la navegación y el recálculo de las escenas pueden mover el scroll justo después de cargar.
+    const go = () => {
+      if (Math.abs(window.scrollY - y!) < 4) return;
+      const lenis = getLenis();
+      if (lenis) lenis.scrollTo(y!, { immediate: true, force: true });
+      window.scrollTo(0, y!);
+    };
+    const ts = [60, 300, 700, 1200].map((ms) => window.setTimeout(go, ms));
+    return () => ts.forEach(clearTimeout);
+  }, []);
 
   useEffect(() => {
     if (reduced || !root.current || !stage.current) return;
@@ -68,11 +105,20 @@ export function Footer() {
       <div ref={root} className={reduced ? "" : "h-[240svh]"}>
       <div ref={stage} className={`flex flex-col px-[var(--gutter)] pt-[clamp(4rem,10vh,8rem)] ${reduced ? "bg-cobalt text-cloud" : "sticky top-0 h-svh bg-cloud text-ink"}`}>
         {/* Easter egg: el busto en trama de puntos blanca, sutil, en el hueco del contacto; sigue al ratón. */}
-        <div data-bust aria-hidden className="pointer-events-none absolute inset-y-0 right-[var(--gutter)] hidden max-w-[48vw] opacity-70 md:block" style={{ aspectRatio: BUST_ASPECT }}>
-          <HalftoneBust className="h-full w-full" />
-        </div>
+        {/* Al pasar el ratón los puntos se apartan; con un clic se abre la página del busto. */}
+        <button
+          type="button"
+          data-bust
+          onClick={openBust}
+          aria-label="Abrir el busto de 2894_"
+          className="absolute inset-y-0 right-[var(--gutter)] hidden max-w-[48vw] cursor-pointer opacity-70 transition-opacity duration-500 hover:opacity-90 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:block"
+          style={{ aspectRatio: BUST_ASPECT }}
+        >
+          <HalftoneBust className="h-full w-full" burstRef={burst} />
+        </button>
+        {leaving && <div aria-hidden className="fade-to-cloud fixed inset-0 z-[60] bg-cloud" />}
 
-        <h2 data-head className="text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
+        <h2 data-head className="relative z-10 text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
           <span className="sr-only">Contacto</span>
           <span aria-hidden>
             <Chars text="Contacto" />
@@ -80,7 +126,7 @@ export function Footer() {
         </h2>
 
         {/* Lo importante primero: correo y teléfono, cada uno con su acción directa */}
-        <dl className="mt-8 grid max-w-3xl gap-3">
+        <dl className="relative z-10 mt-8 grid max-w-3xl gap-3">
           <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
             <div>
               <dt className="text-sm opacity-75">Correo</dt>
@@ -107,12 +153,12 @@ export function Footer() {
           </div>
         </dl>
 
-        <div data-mark aria-hidden className="mt-auto select-none whitespace-nowrap text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
+        <div data-mark aria-hidden className="pointer-events-none relative z-10 mt-auto select-none whitespace-nowrap text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
           <Chars text="2894_" />
         </div>
 
         {/* Al final de todo: navegación, ubicación y créditos */}
-        <div data-reveal className="flex flex-wrap items-center gap-x-6 gap-y-1 pb-6 text-sm">
+        <div data-reveal className="relative z-10 flex flex-wrap items-center gap-x-6 gap-y-1 pb-6 text-sm">
           <ul className="flex flex-wrap gap-x-5">
             {nav.map((n) => (
               <li key={n.href}>

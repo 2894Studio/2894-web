@@ -185,7 +185,6 @@ export function Navbar() {
                   className="relative inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium transition-colors duration-300 hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-cobalt aria-[current]:bg-ink/[0.07]"
                 >
                   {item.label}
-                  <span aria-hidden className={`absolute bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-cobalt transition-[opacity,scale] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] ${active === item.href ? "scale-100 opacity-100" : "scale-0 opacity-0"}`} />
                 </a>
               </li>
             ))}

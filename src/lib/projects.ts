@@ -110,7 +110,7 @@ async function getCatalog(): Promise<Catalog> {
 
 // Carpeta "_Clientes" de Drive: en cada subcarpeta ("01 Inditex"…) el archivo "logo.*" es el logo del cliente y
 // el resto de fotos forman el pase tipo GIF. Clave: nombre del cliente en minúsculas ("01 Inditex" → "inditex").
-export type ClientMedia = { frames: Record<string, string[]>; logos: Record<string, string> };
+export type ClientMedia = { frames: Record<string, string[]>; logos: Record<string, string>; videos?: Record<string, string> };
 export async function getClientMedia(): Promise<ClientMedia> {
   "use cache";
   cacheTag("projects");
@@ -195,7 +195,7 @@ export const toSphere = (p: ProjectEntry): SphereItem => {
     title: p.title,
     category: p.category,
     image: p.cover.kind === "image" ? p.cover.src : (p.cover.poster ?? images[0] ?? ""),
-    frames: images.slice(0, 24),
+    frames: videoProject ? [] : images.slice(0, 24), // proyectos de vídeo: solo el vídeo, sin pase de fotos
     video: videoProject ? (p.cover.kind === "video" ? p.cover.src : firstVideo?.src) : undefined,
     review: p.summary,
     links: [

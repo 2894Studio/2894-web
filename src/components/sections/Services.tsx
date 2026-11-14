@@ -88,7 +88,7 @@ export function Services({ images }: { images: ApplyImage[] }) {
 
   useEffect(() => {
     if (reduced || !section.current || !track.current) return;
-    const dist = () => track.current!.scrollWidth - window.innerWidth;
+    const dist = () => (track.current ? track.current.scrollWidth - window.innerWidth : 0);
     const paint = (p: number) => {
       const x = p * LAST;
       const i = Math.min(LAST - 1, Math.floor(x));

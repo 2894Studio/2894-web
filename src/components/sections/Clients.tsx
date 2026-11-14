@@ -6,6 +6,7 @@ import { SectionTitle } from "@/components/SectionTitle";
 import { clients } from "@/content/site";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { ClientMedia } from "@/lib/projects";
+import { VIDEO_START } from "@/components/ProjectSphere";
 
 const FRAME_MS = 420; // como el pase de los proyectos
 
@@ -88,6 +89,12 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
         className={`pointer-events-none fixed left-0 top-0 z-30 hidden aspect-[4/5] w-56 overflow-hidden transition-[opacity,scale] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] [@media(hover:hover)_and_(pointer:fine)]:block ${hover === null ? "scale-75 opacity-0" : "scale-100 opacity-100"}`}
       >
         {clients.map((c, i) => {
+          // Clientes con un proyecto de vídeo (sin fotos): el vídeo en bucle, sin sonido, solo mientras se pasa por encima.
+          const video = media.videos?.[c.name.toLowerCase()];
+          if (video && !media.frames[c.name.toLowerCase()])
+            return hover === i ? (
+              <video key={`${c.name}-v`} src={`${video}#t=${VIDEO_START}`} autoPlay muted loop playsInline className="absolute inset-0 h-full w-full object-cover" />
+            ) : null;
           const frames = framesOf(c.name, c.image);
           return frames.map((src, k) => (
             <Image key={`${c.name}-${src}`} src={src} alt="" fill sizes="224px" className={`object-cover ${hover === i && k === tick % frames.length ? "opacity-100" : "opacity-0"}`} />

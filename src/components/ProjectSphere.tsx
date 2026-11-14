@@ -305,13 +305,19 @@ export function ProjectSphere({
           <div key={p.id} ref={(n) => { cards.current[i] = n; }} data-sphere-card className="absolute left-1/2 top-1/2 opacity-0">
             <button
               type="button"
-              aria-label={`${p.title}, ${p.category}. ${p.clickVideo ? "Ver vídeo" : "Ver reseña"}`}
+              aria-label={`${p.title}, ${p.category}. ${p.links[0] ? `${p.links[0].label} (se abre en otra pestaña)` : p.clickVideo ? "Ver vídeo" : "Ver reseña"}`}
               aria-pressed={pinned?.id === p.id}
               onPointerEnter={() => setHovered(p)}
               onFocus={() => setHovered(p)}
               onBlur={() => setHovered((h) => (h?.id === p.id ? null : h))}
               onClick={() => {
                 if (moved.current) return;
+                // En táctil no hay etiqueta de cursor: se abre la reseña con el botón "Ir a la web".
+                if (p.links[0] && window.matchMedia(FINE_POINTER).matches) {
+                  // Proyectos con web: el clic lleva directamente a la web (lo anuncia la etiqueta del cursor).
+                  window.open(p.links[0].href, "_blank", "noopener,noreferrer");
+                  return;
+                }
                 if (p.clickVideo) {
                   // Proyectos de vídeo: se abren directamente a pantalla completa (y quedan fijados al cerrar).
                   setPinned(p);

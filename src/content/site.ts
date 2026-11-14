@@ -85,14 +85,15 @@ export const services = [
   },
 ];
 
-// TODO: sustituir por los clientes y disciplinas reales; las imágenes salen en hover.
+// Clientes: al pasar por encima, pase tipo GIF con las fotos de su carpeta en Drive (_Clientes) o, si no hay,
+// con las del proyecto indicado en `project` (slug de la carpeta del proyecto).
 export const clients = [
   // Orden pedido por el estudio: Inditex, ING, Nateevo, DPROMA, MOA.
-  { name: "INDITEX", logo: { src: "/brand/clients/inditex.svg", ratio: 320 / 65 }, disciplines: ["Research", "Strategy", "Design", "Development"], image: stock[13].src, alt: stock[13].title },
-  { name: "ING", logo: { src: "/brand/clients/ing.svg", ratio: 264.6 / 89.4 }, disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
-  { name: "NATEEVO", logo: { src: "/brand/clients/nateevo.svg", ratio: 811 / 181 }, disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
-  { name: "DPROMA", logo: { src: "/brand/clients/dproma.svg", ratio: 2546.8 / 1354.7, scale: 1.6 }, disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
-  { name: "MOA", logo: { src: "/brand/clients/moa.png", ratio: 437 / 129 } as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
+  { name: "INDITEX", project: "storyboard-en-video-para-zara-home", logo: { src: "/brand/clients/inditex.svg", ratio: 320 / 65 }, disciplines: ["Research", "Strategy", "Design", "Development"], image: stock[13].src, alt: stock[13].title },
+  { name: "ING", project: "formaciones", logo: { src: "/brand/clients/ing.svg", ratio: 264.6 / 89.4 }, disciplines: ["Research", "Strategy"], image: stock[10].src, alt: stock[10].title },
+  { name: "NATEEVO", project: "formaciones", logo: { src: "/brand/clients/nateevo.svg", ratio: 811 / 181 }, disciplines: ["Design", "Development"], image: stock[12].src, alt: stock[12].title },
+  { name: "DPROMA", project: "dproma", logo: { src: "/brand/clients/dproma.svg", ratio: 2546.8 / 1354.7, scale: 1.6 }, disciplines: ["Research", "Design"], image: stock[14].src, alt: stock[14].title },
+  { name: "MOA", project: "taller-personajes-consistentes" as string | undefined, logo: { src: "/brand/clients/moa.png", ratio: 437 / 129 } as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Strategy", "Design"], image: stock[11].src, alt: stock[11].title },
 ];
 
 // Showreel en alta calidad, servido desde la web (public/showreel, generado desde el original de Drive "_Showreel").

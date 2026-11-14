@@ -36,7 +36,15 @@ function sample(im: HTMLImageElement, w: number, h: number) {
   return g.getImageData(0, 0, w, h).data;
 }
 
-export function HalftoneBust({ className = "" }: { className?: string }) {
+const REPEL_R = 0.16; // radio (fracción del ancho) en el que el ratón aparta los puntos
+const REPEL_F = 0.9;
+const BACK = 0.06; // muelle que devuelve cada punto a su sitio
+const DAMP = 0.82;
+
+export type HalftoneHandle = { burst: () => void };
+
+// `burstRef`: permite pedir desde fuera la "explosión" de los puntos (antes de pasar a la página del busto).
+export function HalftoneBust({ className = "", burstRef }: { className?: string; burstRef?: React.MutableRefObject<HalftoneHandle | null> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -44,27 +52,64 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
     if (!cv) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let dots: Dot[] = [];
-    let cols = SAMPLE_W, rows = 0, raf = 0, alive = true, visible = false;
+    let ox = new Float32Array(0), oy = new Float32Array(0), vx = new Float32Array(0), vy = new Float32Array(0);
+    let cols = SAMPLE_W, rows = 0, raf = 0, alive = true, visible = false, fade = 1, bursting = false;
     const target = { x: 0, y: 0 }, cur = { x: 0, y: 0 };
+    const ptr = { x: 0, y: 0, in: false }; // puntero en píxeles del canvas
+
+    const layout = () => {
+      const W = cv.width, H = cv.height;
+      const cell = Math.min(W / cols, H / rows);
+      return { W, H, cell, x0: (W - cell * cols) / 2, y0: (H - cell * rows) / 2 };
+    };
 
     const draw = () => {
       const g = cv.getContext("2d");
       if (!g) return;
-      const W = cv.width, H = cv.height;
+      const { W, H, cell, x0, y0 } = layout();
       g.clearRect(0, 0, W, H);
-      const cell = Math.min(W / cols, H / rows);
-      const ox = (W - cell * cols) / 2, oy = (H - cell * rows) / 2;
       const sx = cur.x * SHIFT * W, sy = cur.y * SHIFT * W * 0.6;
+      g.globalAlpha = fade;
       g.fillStyle = "#fff";
       g.beginPath();
-      for (const p of dots) {
-        const x = ox + (p.x + 0.5) * cell + sx * p.d;
-        const y = oy + (p.y + 0.5) * cell + sy * p.d;
+      for (let k = 0; k < dots.length; k++) {
+        const p = dots[k];
+        const x = x0 + (p.x + 0.5) * cell + sx * p.d + ox[k];
+        const y = y0 + (p.y + 0.5) * cell + sy * p.d + oy[k];
         const r = p.r * cell * 0.5;
         g.moveTo(x + r, y);
         g.arc(x, y, r, 0, Math.PI * 2);
       }
       g.fill();
+    };
+
+    // Física de los puntos: el ratón los aparta (o la explosión los lanza) y un muelle los devuelve.
+    const step = () => {
+      const { W, cell, x0, y0 } = layout();
+      const R = REPEL_R * W, R2 = R * R;
+      let moving = 0;
+      for (let k = 0; k < dots.length; k++) {
+        const p = dots[k];
+        if (ptr.in && !bursting) {
+          const dx = x0 + (p.x + 0.5) * cell + ox[k] - ptr.x, dy = y0 + (p.y + 0.5) * cell + oy[k] - ptr.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < R2 && d2 > 0.01) {
+            const d = Math.sqrt(d2), f = (1 - d / R) * REPEL_F * cell;
+            vx[k] += (dx / d) * f;
+            vy[k] += (dy / d) * f;
+          }
+        }
+        if (!bursting) {
+          vx[k] += -ox[k] * BACK;
+          vy[k] += -oy[k] * BACK;
+        }
+        vx[k] *= bursting ? 0.97 : DAMP;
+        vy[k] *= bursting ? 0.97 : DAMP;
+        ox[k] += vx[k];
+        oy[k] += vy[k];
+        moving += Math.abs(vx[k]) + Math.abs(vy[k]) + Math.abs(ox[k]) * 0.05;
+      }
+      return moving / Math.max(1, dots.length) > 0.01;
     };
 
     const resize = () => {
@@ -79,8 +124,11 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
       raf = 0;
       cur.x += (target.x - cur.x) * SPRING;
       cur.y += (target.y - cur.y) * SPRING;
+      const moving = step();
+      if (bursting) fade = Math.max(0, fade - 0.035);
       draw();
-      if (Math.abs(target.x - cur.x) + Math.abs(target.y - cur.y) > 0.001 && visible) raf = requestAnimationFrame(tick);
+      const turning = Math.abs(target.x - cur.x) + Math.abs(target.y - cur.y) > 0.001;
+      if (visible && (turning || moving || ptr.in || (bursting && fade > 0))) raf = requestAnimationFrame(tick);
     };
     const kick = () => {
       if (!raf && !reduced) raf = requestAnimationFrame(tick);
@@ -89,8 +137,29 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
       const r = cv.getBoundingClientRect();
       target.x = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
       target.y = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
+      const k = cv.width / Math.max(1, r.width);
+      ptr.x = (e.clientX - r.left) * k;
+      ptr.y = (e.clientY - r.top) * k;
+      ptr.in = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       kick();
     };
+
+    if (burstRef)
+      burstRef.current = {
+        burst: () => {
+          // Todos los puntos salen despedidos desde el centro del busto y se desvanecen.
+          const { W, H, cell, x0, y0 } = layout();
+          bursting = true;
+          for (let k = 0; k < dots.length; k++) {
+            const dx = x0 + (dots[k].x + 0.5) * cell - W / 2, dy = y0 + (dots[k].y + 0.5) * cell - H / 2;
+            const d = Math.hypot(dx, dy) || 1;
+            const v = (0.02 + Math.random() * 0.03) * W;
+            vx[k] = (dx / d) * v;
+            vy[k] = (dy / d) * v;
+          }
+          kick();
+        },
+      };
 
     Promise.all([load(SRC), load(DEPTH)])
       .then(([im, dm]) => {
@@ -109,6 +178,10 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
             const r = Math.min(1, 0.18 + lum * lum * 1.05) * a;
             dots.push({ x, y, r, d: dp[i] / 255 - 0.5 });
           }
+        ox = new Float32Array(dots.length);
+        oy = new Float32Array(dots.length);
+        vx = new Float32Array(dots.length);
+        vy = new Float32Array(dots.length);
         resize();
       })
       .catch(() => {});
@@ -127,8 +200,9 @@ export function HalftoneBust({ className = "" }: { className?: string }) {
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("pointermove", onMove);
+      if (burstRef) burstRef.current = null;
     };
-  }, []);
+  }, [burstRef]);
 
   return <canvas ref={canvas} aria-hidden className={className} />;
 }

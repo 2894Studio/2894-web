@@ -26,13 +26,14 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 type CamState = "off" | "asking" | "on" | "denied";
 
-export function BustScene() {
+// `standalone`: página propia (/busto) con el busto ya centrado, sin el recorrido de scroll.
+export function BustScene({ standalone = false }: { standalone?: boolean }) {
   const reduced = useReducedMotion();
   if (reduced) return <StaticBust />;
-  return <ScrollBust />;
+  return <ScrollBust standalone={standalone} />;
 }
 
-function ScrollBust() {
+function ScrollBust({ standalone }: { standalone: boolean }) {
   const track = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sky = useRef<HTMLDivElement>(null);
@@ -114,7 +115,7 @@ function ScrollBust() {
       raf = requestAnimationFrame(frame);
       if (!inView) return;
       const r = tr.getBoundingClientRect();
-      const p = clamp(-r.top / (r.height - window.innerHeight), 0, 1);
+      const p = standalone ? 1 : clamp(-r.top / (r.height - window.innerHeight), 0, 1);
       const cx = W / 2, cy = H / 2;
 
       // Zoom out: la silueta del busto (máscara) pasa de cubrir toda la pantalla a su tamaño final;
@@ -160,10 +161,10 @@ function ScrollBust() {
       io.disconnect();
       tracker.current?.stop();
     };
-  }, []);
+  }, [standalone]);
 
   return (
-    <section ref={track} aria-label="2894_ Studio, una nueva forma de diseñar" className="relative" style={{ height: `${TRACK_SVH}svh` }}>
+    <section ref={track} aria-label="2894_ Studio, una nueva forma de diseñar" className="relative" style={{ height: standalone ? "100svh" : `${TRACK_SVH}svh` }}>
       <div ref={stage} className="sticky top-0 h-svh overflow-hidden bg-cloud">
         {/* Cielo = la pintura del busto; su silueta se reduce en el zoom out */}
         <div
