@@ -17,7 +17,7 @@ export default function AvisoLegal() {
 
       <h2>Propiedad intelectual</h2>
       <p>
-        Los textos, el diseño, el código, el logotipo 2894_ y los vídeos y fotografías de proyectos pertenecen al estudio o a sus clientes y colaboradores, que han autorizado su uso. No pueden reproducirse sin permiso. Las marcas y logotipos de clientes y colaboradores pertenecen a sus titulares y se muestran solo para identificar el trabajo realizado con ellos. Algunas imágenes de apoyo son de bancos de imágenes y se citan en “Créditos de imagen”.
+        Los textos, el diseño, el código, el logotipo 2894_ y los vídeos y fotografías de proyectos pertenecen al estudio o a sus clientes y colaboradores, que han autorizado su uso. No pueden reproducirse sin permiso. Las marcas y logotipos de clientes y colaboradores pertenecen a sus titulares y se muestran solo para identificar el trabajo realizado con ellos. Algunas imágenes de apoyo proceden de bancos de imágenes de uso libre.
       </p>
 
       <h2>Enlaces a otras webs</h2>

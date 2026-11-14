@@ -6,8 +6,7 @@ import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
 import { BUST_ASPECT, HalftoneBust, type HalftoneHandle } from "@/components/HalftoneBust";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { legal, nav, partners, studio } from "@/content/site";
-import { stock } from "@/content/stock";
+import { legal, partners, studio } from "@/content/site";
 
 // Letras con máscara para revelarlas; el guion del logo parpadea (.blink).
 const Chars = ({ text }: { text: string }) => (
@@ -153,35 +152,10 @@ export function Footer() {
           </div>
         </dl>
 
-        <div data-mark aria-hidden className="pointer-events-none relative z-10 mt-auto select-none whitespace-nowrap text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
+        <div data-mark aria-hidden className="pointer-events-none relative z-10 mt-auto select-none whitespace-nowrap pb-6 text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
           <Chars text="2894_" />
         </div>
 
-        {/* Al final de todo: navegación, ubicación y créditos */}
-        <div data-reveal className="relative z-10 flex flex-wrap items-center gap-x-6 gap-y-1 pb-6 text-sm">
-          <ul className="flex flex-wrap gap-x-5">
-            {nav.map((n) => (
-              <li key={n.href}>
-                <a href={n.href} className="inline-block min-h-11 py-3 hover:text-sky">
-                  {n.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <p>{studio.facts.location}</p>
-          <details className="relative">
-            <summary className="min-h-11 cursor-pointer py-3">Créditos de imagen</summary>
-            <ul className="absolute bottom-full left-0 grid max-h-[50svh] w-[min(640px,calc(100vw-32px))] gap-1 overflow-auto rounded-2xl bg-cobalt p-4 text-cloud sm:grid-cols-2">
-              {stock.map((s) => (
-                <li key={s.src}>
-                  <a href={s.page} className="underline underline-offset-2" rel="noreferrer">
-                    {s.credit}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </details>
-        </div>
       </div>
       </div>
 
