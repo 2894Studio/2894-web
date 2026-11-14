@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
@@ -45,22 +45,27 @@ export function Footer() {
   const stage = useRef<HTMLDivElement>(null);
   const burst = useRef<HalftoneHandle | null>(null);
   const router = useRouter();
-  const [leaving, setLeaving] = useState(false);
+  const fadeOut = useRef<HTMLDivElement>(null);
+  const leaving = useRef(false);
   // Clic en el busto: los puntos salen despedidos, la pantalla se funde a blanco y se abre la página del busto.
   const openBust = () => {
-    if (leaving) return;
+    if (leaving.current) return;
     try {
       sessionStorage.setItem("bust-from", "home"); // para que "Volver" regrese aquí mismo
       sessionStorage.setItem("bust-return-y", String(window.scrollY));
     } catch {}
     if (reduced) return router.push("/busto");
-    setLeaving(true);
+    leaving.current = true;
+    fadeOut.current?.classList.remove("hidden");
     burst.current?.burst();
     window.setTimeout(() => router.push("/busto"), 750);
   };
 
   // Al volver de la página del busto, la web se coloca de nuevo en el cierre (donde se hizo clic).
+  // La web puede volver con su estado anterior conservado: se quita la capa blanca de la transición.
   useEffect(() => {
+    leaving.current = false;
+    fadeOut.current?.classList.add("hidden");
     let y: number | null = null;
     try {
       const v = sessionStorage.getItem("bust-return-y");
@@ -91,7 +96,6 @@ export function Footer() {
       tl.to(stage.current, { keyframes: { backgroundColor: ["#ffffff", "#e9f1fd", "#9ec5ff", "#0a46ff"], easeEach: "sine.inOut" }, duration: 1.4 }, 0)
         .to(stage.current, { color: "#ffffff", duration: 0.5, ease: "sine.inOut" }, 0.7)
         .from("[data-head] [data-char]", { yPercent: 110, stagger: 0.03, duration: 0.5, ease: "power2.out" }, 1.0)
-        .from("[data-bust]", { opacity: 0, scale: 0.94, duration: 0.6, ease: "power2.out" }, 1.05)
         .from("[data-reveal]", { y: 24, opacity: 0, stagger: 0.1, duration: 0.4, ease: "power2.out" }, 1.25)
         .from("[data-mark] [data-char]", { yPercent: 110, stagger: 0.05, duration: 0.6, ease: "power3.out" }, 1.35)
         .to({}, { duration: 0.3 });
@@ -110,14 +114,14 @@ export function Footer() {
           data-bust
           onClick={openBust}
           aria-label="Abrir el busto de 2894_"
-          className="absolute inset-y-0 right-[var(--gutter)] hidden max-w-[48vw] cursor-pointer opacity-70 transition-opacity duration-500 hover:opacity-90 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:block"
+          className="absolute inset-y-0 right-0 block max-w-full cursor-pointer opacity-40 transition-opacity duration-500 hover:opacity-90 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:right-[var(--gutter)] md:max-w-[48vw] md:opacity-70"
           style={{ aspectRatio: BUST_ASPECT }}
         >
           <HalftoneBust className="h-full w-full" burstRef={burst} />
         </button>
-        {leaving && <div aria-hidden className="fade-to-cloud fixed inset-0 z-[60] bg-cloud" />}
+        <div ref={fadeOut} aria-hidden className="fade-to-cloud fixed inset-0 z-[60] hidden bg-cloud" />
 
-        <h2 data-head className="relative z-10 text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
+        <h2 data-head className="pointer-events-none relative z-10 text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
           <span className="sr-only">Contacto</span>
           <span aria-hidden>
             <Chars text="Contacto" />
@@ -125,7 +129,7 @@ export function Footer() {
         </h2>
 
         {/* Lo importante primero: correo y teléfono, cada uno con su acción directa */}
-        <dl className="relative z-10 mt-8 grid max-w-3xl gap-3">
+        <dl className="pointer-events-none relative z-10 mt-8 grid max-w-3xl gap-3 [&_a]:pointer-events-auto">
           <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
             <div>
               <dt className="text-sm opacity-75">Correo</dt>

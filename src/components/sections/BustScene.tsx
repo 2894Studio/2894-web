@@ -178,7 +178,7 @@ function ScrollBust({ standalone }: { standalone: boolean }) {
 
         {/* "2894_ Studio" y la frase, sutiles, a los lados del busto (en móvil, arriba) */}
         <p className="sr-only">2894_ Studio. Una nueva forma de diseñar</p>
-        <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] text-ink/55 opacity-0 sm:text-xs">
+        <div ref={sides} aria-hidden className={`pointer-events-none absolute inset-0 ${standalone ? "max-sm:[&>span]:!top-[calc(84px+env(safe-area-inset-top,0px))]" : ""} text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] text-ink/55 opacity-0 sm:text-xs`}>
           <span data-side="l" className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] block sm:text-right">
             2894<span className="blink">_</span>
             <br />
