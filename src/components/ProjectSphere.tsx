@@ -118,6 +118,8 @@ export function ProjectSphere({
   const [onScreen, setOnScreen] = useState(false); // con la esfera a la vista, todas las fichas se mueven (como GIFs)
   const [front, setFront] = useState(projects[0].title);
   const moved = useRef(false);
+  // Hover calculado en cada fotograma (ver render): índice de la tarjeta bajo el cursor, o -1.
+  const hoverRef = useRef(-1);
   const shown = pinned ?? hovered;
   // Proyecto abierto con un clic: crece y se coloca en el centro de la pantalla; los demás siguen girando muy tenues.
   const pinRef = useRef(-1);
@@ -134,8 +136,11 @@ export function ProjectSphere({
     const POINTS = pointsFor(projects.length);
     const ks = projects.map(() => ({ k: reduced || controlled ? 1 : 0 }));
     const em = projects.map(() => 0); // 0 en la esfera, 1 abierto en el centro
+    const hl = projects.map(() => 0); // 0..1: realce de la tarjeta bajo el cursor
+    const ptr = { x: 0, y: 0, in: false }; // posición del puntero (ratón) sobre la esfera
     let dim = 0;
     const PERSP = 1600; // igual que [perspective:1600px] del contenedor
+    const zs = projects.map(() => 0); // profundidad actual de cada tarjeta (-1 detrás … 1 delante)
 
     const resize = () => {
       s.R = Math.min(el.clientWidth * 0.4, 420);
@@ -147,7 +152,9 @@ export function ProjectSphere({
     const render = () => {
       if (!s.drag) {
         s.a += s.v;
-        s.v += ((reduced ? 0 : BASE_SPEED) - s.v) * 0.02; // vuelve despacio al giro base
+        // Con el cursor sobre una tarjeta la esfera casi se detiene (se puede leer y pulsar); luego vuelve al giro base.
+        const target = reduced ? 0 : hoverRef.current >= 0 ? BASE_SPEED * 0.06 : BASE_SPEED;
+        s.v += (target - s.v) * (hoverRef.current >= 0 ? 0.08 : 0.02);
       }
       let best = -2;
       const pin = pinRef.current;
@@ -188,11 +195,33 @@ export function ProjectSphere({
         const tx = lerpN(x * s.R * k, offX / f, e), ty = lerpN(-p.y * s.R * k, offY / f, e), tz = lerpN(z * s.R * k, zO, e);
         const sc = lerpN(Math.min(1, k * 1.15) * (0.62 + depth * 0.38), bigS, e);
         c.style.transform = `translate3d(${tx}px, ${ty}px, ${tz}px) scale(${sc})`;
-        const base = Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75);
+        hl[i] += ((i === hoverRef.current && pin < 0 ? 1 : 0) - hl[i]) * 0.15;
+        const base = lerpN(Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75), 1, hl[i]);
         c.style.opacity = String(i === pin ? lerpN(base, 1, e) : lerpN(base, base * 0.12, dim));
         c.style.zIndex = String(e > 0.02 ? 500 : Math.round(depth * 100));
-        c.style.pointerEvents = (i === pin || (z > -0.15 && k > 0.8 && pin < 0)) ? "auto" : "none";
+        // Todas las tarjetas se pueden señalar, estén delante o detrás (salvo con un proyecto abierto o al aparecer).
+        c.style.pointerEvents = i === pin || (k > 0.8 && pin < 0) ? "auto" : "none";
+        zs[i] = z;
       });
+
+      // Hover propio: la tarjeta bajo el cursor se busca en cada fotograma (la esfera gira aunque el ratón esté quieto).
+      // Si varias se superponen, gana la de más delante. Sin tarjeta debajo, no hay hover.
+      if (fine) {
+        let hit = -1, hz = -Infinity;
+        if (ptr.in && pin < 0)
+          cards.current.forEach((c, i) => {
+            if (!c || ks[i].k < 0.8) return;
+            const r = c.getBoundingClientRect();
+            if (ptr.x >= r.left && ptr.x <= r.right && ptr.y >= r.top && ptr.y <= r.bottom && zs[i] > hz) {
+              hz = zs[i];
+              hit = i;
+            }
+          });
+        if (hit !== hoverRef.current) {
+          hoverRef.current = hit;
+          setHovered(hit >= 0 ? projects[hit] : null);
+        }
+      }
     };
 
     let raf = 0;
@@ -253,8 +282,17 @@ export function ProjectSphere({
     const follow = (e: PointerEvent) => {
       lx?.(e.clientX + 18);
       ly?.(e.clientY + 18);
+      ptr.x = e.clientX;
+      ptr.y = e.clientY;
+      ptr.in = true;
     };
-    if (fine) el.addEventListener("pointermove", follow);
+    const leave = () => {
+      ptr.in = false;
+    };
+    if (fine) {
+      el.addEventListener("pointermove", follow);
+      el.addEventListener("pointerleave", leave);
+    }
 
     const t = window.setInterval(() => setFront(projects[s.frontIdx].title), 250);
 
@@ -268,6 +306,7 @@ export function ProjectSphere({
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       el.removeEventListener("pointermove", follow);
+      el.removeEventListener("pointerleave", leave);
       window.clearInterval(t);
       gsap.killTweensOf(ks);
     };
@@ -289,11 +328,35 @@ export function ProjectSphere({
     };
   }, [pinned]);
 
+  // Acción de una tarjeta: web, vídeo o reseña. Con ratón actúa sobre la tarjeta que indica la etiqueta.
+  const activate = (target: Project, byPointer = true) => {
+    let p = target;
+    if (moved.current) return;
+    // Con ratón, el clic actúa sobre la tarjeta que indica la etiqueta (la de más delante bajo el cursor);
+    // con teclado (Intro/Espacio), sobre la tarjeta enfocada.
+    if (byPointer && window.matchMedia(FINE_POINTER).matches && hoverRef.current >= 0) p = projects[hoverRef.current];
+    // En táctil no hay etiqueta de cursor: se abre la reseña con el botón "Ir a la web".
+    if (p.links[0] && window.matchMedia(FINE_POINTER).matches) {
+      // Proyectos con web: el clic lleva directamente a la web (lo anuncia la etiqueta del cursor).
+      window.open(p.links[0].href, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (p.clickVideo) {
+      // Proyectos de vídeo: se abren directamente a pantalla completa (y quedan fijados al cerrar).
+      setPinned(p);
+      setPlaying(p);
+    } else setPinned((cur) => (cur?.id === p.id ? null : p));
+  };
+
   return (
     <div className="relative">
       <div
         ref={stage}
         onPointerEnter={() => setInside(true)}
+        onClick={(e) => {
+          // Las tarjetas de detrás quedan tras el plano del escenario en 3D: el clic llega aquí y no a su botón.
+          if (!(e.target as HTMLElement).closest("button") && hoverRef.current >= 0) activate(projects[hoverRef.current]);
+        }}
         onPointerLeave={() => {
           setInside(false);
           setHovered(null);
@@ -307,23 +370,9 @@ export function ProjectSphere({
               type="button"
               aria-label={`${p.title}, ${p.category}. ${p.links[0] ? `${p.links[0].label} (se abre en otra pestaña)` : p.clickVideo ? "Ver vídeo" : "Ver reseña"}`}
               aria-pressed={pinned?.id === p.id}
-              onPointerEnter={() => setHovered(p)}
               onFocus={() => setHovered(p)}
               onBlur={() => setHovered((h) => (h?.id === p.id ? null : h))}
-              onClick={() => {
-                if (moved.current) return;
-                // En táctil no hay etiqueta de cursor: se abre la reseña con el botón "Ir a la web".
-                if (p.links[0] && window.matchMedia(FINE_POINTER).matches) {
-                  // Proyectos con web: el clic lleva directamente a la web (lo anuncia la etiqueta del cursor).
-                  window.open(p.links[0].href, "_blank", "noopener,noreferrer");
-                  return;
-                }
-                if (p.clickVideo) {
-                  // Proyectos de vídeo: se abren directamente a pantalla completa (y quedan fijados al cerrar).
-                  setPinned(p);
-                  setPlaying(p);
-                } else setPinned((cur) => (cur?.id === p.id ? null : p));
-              }}
+              onClick={(e) => activate(p, e.detail > 0)}
               className={`group relative block h-full w-full overflow-hidden transition-shadow focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt`}
             >
               <CardMedia item={p} index={i} active={onScreen || hovered?.id === p.id || pinned?.id === p.id} />
