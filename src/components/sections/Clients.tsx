@@ -47,10 +47,7 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
       <ul ref={list} className="mx-[var(--gutter)] mt-12 border-b border-ink" onPointerLeave={() => setHover(null)}>
         {clients.map((c, i) => (
           <li key={c.name} onPointerEnter={() => setHover(i)} className="group border-t border-ink">
-            <a
-              href="#"
-              className="grid w-full grid-cols-[1fr_auto] items-center gap-x-6 gap-y-1 py-6 uppercase focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cobalt sm:grid-cols-[2fr_3fr_auto] sm:py-8"
-            >
+            <div className="grid w-full grid-cols-1 items-center gap-x-6 gap-y-2 py-6 uppercase sm:grid-cols-[2fr_3fr] sm:py-8">
               {media.logos[c.name.toLowerCase()] ? (
                 <span className="flex h-[clamp(2rem,5vw,3.75rem)] items-center transition-transform duration-700 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:translate-x-4">
                   {/* eslint-disable-next-line @next/next/no-img-element -- logo subido a Drive (proporción libre) */}
@@ -74,11 +71,8 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
                   {c.name}
                 </span>
               )}
-              <span className="order-3 col-span-2 text-sm tracking-wide sm:order-none sm:col-span-1">{c.disciplines.join(" · ")}</span>
-              <span className="spring inline-flex min-h-11 items-center text-sm font-medium tracking-wide group-hover:text-cobalt">
-                View more <span aria-hidden className="ml-2 transition-transform duration-500 group-hover:translate-x-1">→</span>
-              </span>
-            </a>
+              <span className="text-sm tracking-wide">{c.disciplines.join(" · ")}</span>
+            </div>
           </li>
         ))}
       </ul>
