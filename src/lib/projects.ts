@@ -36,12 +36,12 @@ const sample = (slug: string, title: string, category: string, i: number, client
     title,
     category,
     client,
-    summary: "Texto de ejemplo: qué se pidió, cómo lo abordamos y qué cambió para el equipo.",
+    summary: "",
     openVideo: false,
     cover: media[0],
     media,
     carousel: i % 2 === 0 ? media.slice(1) : [],
-    bodyHtml: "<p>Texto de ejemplo del caso. Se edita en la Ficha del proyecto en Google Drive.</p>",
+    bodyHtml: "",
   };
 };
 const LOCAL: ProjectEntry[] = [

@@ -391,7 +391,7 @@ export function ProjectSphere({
           <div key={shown.id} className="label-in">
             <p className="text-sm uppercase tracking-wide">{shown.category}</p>
             <h3 className="mt-2 text-3xl font-light uppercase tracking-tight">{shown.title}</h3>
-            <p className="mt-3 text-base">{shown.review}</p>
+            {shown.review && <p className="mt-3 text-base">{shown.review}</p>}
             {/* "Ver caso" retirado por ahora: las páginas /proyectos/<slug> siguen existiendo. */}
             <div className="mt-5 flex flex-wrap items-center gap-3">
               {pinned && shown.clickVideo && (

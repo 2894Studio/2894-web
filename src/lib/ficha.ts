@@ -34,6 +34,8 @@ const KEYS: Record<string, keyof Fields> = {
   "al hacer clic": "openVideo", "al hacer click": "openVideo", "al pulsar": "openVideo",
 };
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+// Texto de plantilla de la Ficha sin rellenar ("(sustituir) …"): no se publica.
+const isPlaceholder = (text: string) => /\(\s*sustituir\s*\)/i.test(text);
 const isSep = (line: string) => /^\s*[-—–_]{3,}\s*$/.test(line);
 
 // Campos de la cabecera (texto plano del Doc, hasta la línea "---").
@@ -45,7 +47,7 @@ export function parseFields(plain: string): Fields {
     if (!m) continue;
     const key = KEYS[norm(m[1])];
     const val = m[2].trim();
-    if (!key || !val) continue;
+    if (!key || !val || isPlaceholder(val)) continue;
     if (key === "year") {
       const y = parseInt(val, 10);
       if (y > 1900 && y < 3000) out.year = y;
@@ -83,7 +85,7 @@ export function bodyFromHtml(html: string): string {
   const blocks = body.match(/<(p|h[1-6]|ul|ol)\b[^>]*>[\s\S]*?<\/\1>/gi) ?? [];
   const textOf = (b: string) => decode(b.replace(/<[^>]+>/g, "")).trim();
   const sep = blocks.findIndex((b) => isSep(textOf(b)));
-  const rest = sep >= 0 ? blocks.slice(sep + 1) : blocks.filter((b) => !/^\s*[^:]{2,20}:/.test(textOf(b)));
+  const rest = (sep >= 0 ? blocks.slice(sep + 1) : blocks.filter((b) => !/^\s*[^:]{2,20}:/.test(textOf(b)))).filter((b) => !isPlaceholder(textOf(b)));
 
   const inline = (s: string): string => {
     let out = "";
