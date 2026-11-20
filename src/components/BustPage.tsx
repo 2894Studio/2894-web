@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BustScene } from "@/components/sections/BustScene";
+import { Bust3DScene } from "@/components/Bust3D";
 
-// Página del busto (easter egg): el busto centrado, que sigue al ratón (o a la cámara, si se activa).
+// Página del busto (easter egg): el busto en 3D centrado, que sigue al ratón (o a la cámara, si se activa).
 // Volver es fácil: botón visible arriba a la izquierda (recibe el foco al entrar), tecla Esc y el "atrás" del navegador.
 export function BustPage() {
   const router = useRouter();
@@ -51,7 +51,7 @@ export function BustPage() {
         <span aria-hidden>←</span> Volver a la web
         <kbd className="ml-1 hidden rounded border border-current/30 px-1.5 text-[11px] opacity-60 sm:inline">Esc</kbd>
       </Link>
-      <BustScene standalone />
+      <Bust3DScene />
     </main>
   );
 }
