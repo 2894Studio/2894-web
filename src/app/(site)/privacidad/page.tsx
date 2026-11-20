@@ -18,12 +18,16 @@ export default function Privacidad() {
       <p>
         Al visitar la web, el proveedor de alojamiento (Vercel) registra de forma técnica la dirección IP y el navegador para servir las páginas y protegerlas frente a ataques. No usamos esos datos para identificarte ni para hacer perfiles.
       </p>
+      <p>
+        También medimos las visitas con Vercel Web Analytics: datos agregados y anónimos (páginas vistas, país, tipo de dispositivo y navegador, y pulsaciones en botones como WhatsApp o correo). No usa cookies ni identificadores personales y no permite reconocerte entre visitas ni entre webs.
+      </p>
 
       <h2>Para qué y con qué base legal</h2>
       <ul>
         <li>Responder a tu mensaje y preparar una propuesta: aplicación de medidas precontractuales a petición tuya (art. 6.1.b RGPD).</li>
         <li>Mantener la relación profesional si trabajamos juntos: ejecución del contrato (art. 6.1.b RGPD).</li>
         <li>Seguridad y funcionamiento de la web: interés legítimo (art. 6.1.f RGPD).</li>
+        <li>Conocer cuántas personas visitan la web y qué contenido interesa, con datos anónimos y agregados, para mejorarla: interés legítimo (art. 6.1.f RGPD).</li>
       </ul>
 
       <h2>Cuánto tiempo los guardamos</h2>

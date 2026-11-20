@@ -12,6 +12,7 @@
     "@base-ui/react": "^1.9.0",
     "@gsap/react": "^2.1.2",
     "@mediapipe/tasks-vision": "^0.10.14",
+    "@vercel/analytics": "2.0.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "gsap": "^3.15.0",

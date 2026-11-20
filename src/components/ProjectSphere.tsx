@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
 import { VideoLightbox } from "@/components/VideoLightbox";
+import { track } from "@/lib/track";
 
 type Project = SphereItem;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -338,11 +339,13 @@ export function ProjectSphere({
     // En táctil no hay etiqueta de cursor: se abre la reseña con el botón "Ir a la web".
     if (p.links[0] && window.matchMedia(FINE_POINTER).matches) {
       // Proyectos con web: el clic lleva directamente a la web (lo anuncia la etiqueta del cursor).
+      track("proyecto_web", { proyecto: p.id });
       window.open(p.links[0].href, "_blank", "noopener,noreferrer");
       return;
     }
     if (p.clickVideo) {
       // Proyectos de vídeo: se abren directamente a pantalla completa (y quedan fijados al cerrar).
+      track("proyecto_video", { proyecto: p.id });
       setPinned(p);
       setPlaying(p);
     } else setPinned((cur) => (cur?.id === p.id ? null : p));

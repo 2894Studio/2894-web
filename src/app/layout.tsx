@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -25,6 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-cloud text-ink">
         {children}
+        {/* Medición de visitas de Vercel: sin cookies ni identificadores personales (ver /cookies y /privacidad). */}
+        <Analytics />
       </body>
     </html>
   );

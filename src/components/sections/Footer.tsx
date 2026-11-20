@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
+import { track } from "@/lib/track";
 import { BUST_ASPECT, HalftoneBust, type HalftoneHandle } from "@/components/HalftoneBust";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { legal, partners, studio } from "@/content/site";
@@ -56,6 +57,7 @@ export function Footer() {
     } catch {}
     if (reduced) return router.push("/busto");
     leaving.current = true;
+    track("easter_egg_busto");
     fadeOut.current?.classList.remove("hidden");
     burst.current?.burst();
     window.setTimeout(() => router.push("/busto"), 750);
@@ -135,7 +137,7 @@ export function Footer() {
               <dt className="text-sm opacity-75">Correo</dt>
               <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">{studio.email}</dd>
             </div>
-            <a href={mailHref} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
+            <a href={mailHref} onClick={() => track("contacto", { canal: "correo" })} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
               <MailIcon />
               Enviar correo
             </a>
@@ -144,12 +146,12 @@ export function Footer() {
             <div>
               <dt className="text-sm opacity-75">Teléfono</dt>
               <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
-                <a href={`tel:${studio.phone.replace(/\s/g, "")}`} className="underline decoration-1 underline-offset-[6px] hover:text-sky">
+                <a href={`tel:${studio.phone.replace(/\s/g, "")}`} onClick={() => track("contacto", { canal: "telefono" })} className="underline decoration-1 underline-offset-[6px] hover:text-sky">
                   {studio.phone}
                 </a>
               </dd>
             </div>
-            <a href={whatsappHref} target="_blank" rel="noreferrer" className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
+            <a href={whatsappHref} target="_blank" rel="noreferrer" onClick={() => track("contacto", { canal: "whatsapp" })} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
               <WhatsAppIcon />
               WhatsApp
             </a>
