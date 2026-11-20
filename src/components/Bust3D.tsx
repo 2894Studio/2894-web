@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useRef, useState } from "react";
-import { CloudSky } from "@/components/CloudSky";
-import { startHeadPose, type FaceTracker, type HeadPose } from "@/lib/faceTracking";
+import { CloudSky, SKY_DEFAULTS, type SkyControls } from "@/components/CloudSky";
+import { startHeadPose, type FaceTracker, type HandMotion, type HeadPose } from "@/lib/faceTracking";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 
 // Página /busto con el busto en 3D real (GLB).
@@ -12,7 +12,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //  · Cámara (opcional): el busto repite el movimiento de la cabeza de la persona en los tres ejes (giro, cabeceo e
 //    inclinación). Solo movimiento: no se leen gestos ni expresiones.
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
-//    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado.
+//    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Con la cámara activa, el viento de las
+//    nubes sube con el movimiento de la mano (solo se mide la velocidad: sin gestos).
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
 // dependencias al proyecto. Mientras el modelo carga —o si WebGL/la descarga fallan— se ve el busto 2D de siempre.
 const THREE_URL = "https://esm.sh/three@0.170.0";
@@ -45,6 +46,11 @@ const HEAD_GAIN = 1; // 1 = el busto gira lo mismo que la cabeza
 const HEAD_SMOOTH = 0.5; // suavizado de la medición (0..1; más alto = más directo)
 const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 
+// Viento: Grow va de 0 a 4 (1 por defecto); aquí la ráfaga de la mano puede subir más, y se calma sola.
+const WIND_MAX = 8;
+const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no cuenta
+const HAND_MAX = 10; // a esta velocidad (un saludo enérgico) el viento llega al máximo
+
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 type CamState = "off" | "asking" | "on" | "denied";
@@ -70,6 +76,9 @@ function LiveBust() {
   const placeholder = useRef<HTMLDivElement>(null);
   const sides = useRef<HTMLDivElement>(null);
   const mirrorVideo = useRef<HTMLDivElement>(null);
+  const sky = useRef<SkyControls>({ ...SKY_DEFAULTS }); // controles de las nubes (el viento lo mueve la mano)
+  const hand = useRef(0); // esfuerzo de la mano, 0..1
+  const windBar = useRef<HTMLDivElement>(null);
   const head = useRef<HeadTarget>({ active: false, yaw: 0, pitch: 0, roll: 0 }); // objetivo que marca la cámara (ya en espejo)
   const api = useRef<{ reset: () => void } | null>(null);
   const tracker = useRef<FaceTracker | null>(null);
@@ -119,11 +128,15 @@ function LiveBust() {
     };
   };
 
+  const onHand = (m: HandMotion | null) => {
+    hand.current = m ? clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1) : 0;
+  };
+
   // Cámara opcional: solo si la persona la activa. La imagen se procesa en el dispositivo y no se guarda.
   const startCam = () => {
     setCam("asking");
     cal.current = newCal();
-    startHeadPose(onPose, () => (head.current.active = false))
+    startHeadPose(onPose, () => (head.current.active = false), onHand)
       .then((t) => {
         tracker.current = t;
         mirrorVideo.current?.replaceChildren(t.video);
@@ -137,6 +150,7 @@ function LiveBust() {
     tracker.current = null;
     head.current = { active: false, yaw: 0, pitch: 0, roll: 0 };
     cal.current = newCal();
+    hand.current = 0;
     setCam("off");
   };
   // "Centrar": la postura actual pasa a ser el frente.
@@ -146,6 +160,28 @@ function LiveBust() {
     c.sum = { yaw: 0, pitch: 0, roll: 0 };
     c.neutral = null;
   };
+
+  // Viento de las nubes: sube de golpe con la mano y se calma poco a poco; sin cámara vuelve a 1 y el bucle se detiene.
+  const camOn = cam === "on";
+  useEffect(() => {
+    if (!camOn && sky.current.wind === 1) return;
+    let raf = 0, last = 0;
+    const frame = (now: number) => {
+      const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
+      last = now;
+      if (!camOn) hand.current = 0;
+      const w = sky.current.wind, target = 1 + hand.current * (WIND_MAX - 1);
+      sky.current.wind = w + (target - w) * (1 - Math.exp(-(target > w ? 6 : 0.9) * dt));
+      if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((sky.current.wind - 1) / (WIND_MAX - 1), 0, 1)})`;
+      if (!camOn && Math.abs(sky.current.wind - 1) < 0.01) {
+        sky.current.wind = 1;
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [camOn]);
 
   // Maquetación: imagen de relleno y textos laterales pegados al contorno del busto.
   useEffect(() => {
@@ -454,13 +490,12 @@ function LiveBust() {
     };
   }, []);
 
-  const camOn = cam === "on";
   return (
     <section aria-label="2894_ Studio, una nueva forma de diseñar" className="relative h-svh">
       <div ref={stage} className="relative h-svh overflow-hidden bg-cloud">
         {/* Nubes de Grow, sin cielo: detrás de todo lo demás */}
         <div aria-hidden className={`absolute inset-0 transition-opacity duration-[1400ms] ${skies ? "opacity-100" : "opacity-0"}`}>
-          {skies && <CloudSky />}
+          {skies && <CloudSky controls={sky} />}
         </div>
 
         {/* Busto 2D: se ve mientras carga el 3D y si este falla */}
@@ -520,6 +555,13 @@ function LiveBust() {
           {/* El espejo existe siempre (oculto) para poder colocar la imagen de la cámara en cuanto llega. */}
           <div hidden={!camOn} className="w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]">
             <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
+            {/* Viento que levanta tu mano */}
+            <div aria-hidden className="flex items-center gap-2 bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cloud/80">
+              Viento
+              <span className="h-1 flex-1 overflow-hidden rounded-full bg-cloud/20">
+                <span ref={windBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0)" }} />
+              </span>
+            </div>
             <div className="grid grid-cols-2 bg-white/90">
               <button type="button" onClick={recenter} className="flex min-h-11 items-center justify-center text-xs font-medium text-ink hover:bg-white">
                 Centrar
@@ -530,7 +572,7 @@ function LiveBust() {
             </div>
           </div>
           {camOn ? (
-            <p className="max-w-[16rem] text-right text-xs text-ink/60">El busto repite el movimiento de tu cabeza. Pulsa «Centrar» para fijar tu postura actual como el frente.</p>
+            <p className="max-w-[16rem] text-right text-xs text-ink/60">El busto repite el movimiento de tu cabeza y el viento de las nubes sube con el de tu mano: sacúdela delante de la cámara. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
@@ -539,10 +581,10 @@ function LiveBust() {
                 disabled={cam === "asking"}
                 className="spring inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/15 bg-white/80 px-4 text-sm font-medium text-ink backdrop-blur-md hover:bg-ink hover:text-cloud disabled:opacity-60"
               >
-                {cam === "asking" ? "Activando la cámara…" : "Que el busto copie tu movimiento (cámara)"}
+                {cam === "asking" ? "Activando la cámara…" : "Cámara: mueve el busto y las nubes"}
               </button>
               <p className="max-w-[16rem] text-right text-xs text-ink/60">
-                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Solo se sigue el movimiento de la cabeza; la imagen se procesa en tu dispositivo y no se guarda."}
+                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Solo se sigue el movimiento de la cabeza y de la mano, no los gestos; la imagen se procesa en tu dispositivo y no se guarda."}
               </p>
             </>
           )}

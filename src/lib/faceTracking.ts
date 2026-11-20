@@ -78,12 +78,19 @@ function eulerYXZ(d: number[]) {
   return { yaw: Math.atan2(-m31, m11), pitch, roll: 0 };
 }
 
-export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () => void): Promise<FaceTracker> {
+// Movimiento de la mano: velocidad del centro de la palma en "largos de mano" por segundo (no depende de lo cerca que
+// esté de la cámara). `null`: ya no se ve ninguna mano. Solo se mide el movimiento: ni gestos ni la forma de la mano.
+export type HandMotion = { speed: number };
+const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+// `onHand` (opcional): mide también el movimiento de la mano con la misma cámara. Si ese modelo no carga, el seguimiento
+// de la cabeza sigue funcionando igual.
+export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () => void, onHand?: (m: HandMotion | null) => void): Promise<FaceTracker> {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("sin-camara");
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
   const stopStream = () => stream.getTracks().forEach((t) => t.stop());
   try {
-    const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
+    const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
     const fileset = await FilesetResolver.forVisionTasks(WASM);
     const make = (delegate: "GPU" | "CPU") =>
       FaceLandmarker.createFromOptions(fileset, {
@@ -94,11 +101,34 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
         outputFacialTransformationMatrixes: true,
       });
     const landmarker = await make("GPU").catch(() => make("CPU")); // sin GPU disponible, en CPU
+    const makeHands = (delegate: "GPU" | "CPU") =>
+      HandLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: "VIDEO", numHands: 1 });
+    const hands = onHand ? await makeHands("GPU").catch(() => makeHands("CPU")).catch(() => null) : null;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.srcObject = stream;
     await video.play();
+
+    // Mano: se mide cada dos cuadros; la velocidad sale del recorrido del centro de la palma entre mediciones.
+    let frame = 0, lostHand = 0, prev: { x: number; y: number; t: number } | null = null;
+    const PALM = [0, 5, 9, 13, 17]; // muñeca y base de los cuatro dedos
+    const trackHand = () => {
+      const lm = hands!.detectForVideo(video, performance.now()).landmarks?.[0];
+      if (!lm) {
+        prev = null;
+        if (++lostHand === 3) onHand!(null);
+        return;
+      }
+      lostHand = 0;
+      const W = video.videoWidth, H = video.videoHeight;
+      const x = (PALM.reduce((a, i) => a + lm[i].x, 0) / PALM.length) * W;
+      const y = (PALM.reduce((a, i) => a + lm[i].y, 0) / PALM.length) * H;
+      const size = Math.hypot((lm[9].x - lm[0].x) * W, (lm[9].y - lm[0].y) * H) || 1; // muñeca → base del dedo corazón
+      const t = video.currentTime;
+      if (prev && t > prev.t) onHand!({ speed: Math.hypot(x - prev.x, y - prev.y) / size / (t - prev.t) });
+      prev = { x, y, t };
+    };
 
     let raf = 0, stopped = false, last = -1, missed = 0;
     const loop = () => {
@@ -106,6 +136,7 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
       raf = requestAnimationFrame(loop);
       if (video.currentTime === last || video.readyState < 2) return;
       last = video.currentTime;
+      if (hands && (frame++ & 1) === 0) trackHand();
       const res = landmarker.detectForVideo(video, performance.now());
       const m = res.facialTransformationMatrixes?.[0]?.data;
       const lm = res.faceLandmarks?.[0];
@@ -126,6 +157,7 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
         stopped = true;
         cancelAnimationFrame(raf);
         landmarker.close();
+        hands?.close();
         stopStream();
         video.remove();
       },
