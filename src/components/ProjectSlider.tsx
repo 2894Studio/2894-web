@@ -65,7 +65,7 @@ export function ProjectSlider({ items, mediaRef, fill = false }: { items: Sphere
           if (e.key === "ArrowLeft") { e.preventDefault(); go(current - 1); }
         }}
         data-lenis-prevent
-        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto px-[10vw] pb-4 [scrollbar-width:none] ${fill ? "min-h-0 flex-1 overflow-y-auto" : ""} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cobalt [&::-webkit-scrollbar]:hidden`}
+        className={`flex snap-x snap-mandatory gap-5 overflow-x-auto px-[10vw] pb-4 [scrollbar-width:none] ${fill ? "min-h-0 flex-1 overflow-y-auto" : ""} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cobalt [&::-webkit-scrollbar]:hidden`}
       >
         {items.map((p, i) => {
           const link = p.links[0];
@@ -88,7 +88,7 @@ export function ProjectSlider({ items, mediaRef, fill = false }: { items: Sphere
                 <h3 className="mt-1 text-xl font-light uppercase leading-tight tracking-tight">{p.title}</h3>
                 {p.review && <p className="mt-2 text-base leading-snug">{p.review}</p>}
                 {(link || p.clickVideo) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-5 flex flex-wrap gap-2">
                     {p.clickVideo && (
                       <button type="button" onClick={() => { track("proyecto_video", { proyecto: p.id }); setPlaying(p); }} className="spring inline-flex min-h-11 items-center gap-2 rounded-full bg-cobalt px-5 text-sm font-medium uppercase text-cloud active:bg-ink">
                         <span aria-hidden>▶</span> Ver vídeo
@@ -108,7 +108,7 @@ export function ProjectSlider({ items, mediaRef, fill = false }: { items: Sphere
       </ul>
 
       {fill && (
-        <div aria-hidden className={`pointer-events-none -mt-10 mb-2 flex h-8 shrink-0 justify-center transition-opacity duration-300 ${more ? "opacity-100" : "opacity-0"}`}>
+        <div aria-hidden className={`pointer-events-none -mt-10 mb-2 flex h-8 shrink-0 justify-end px-[10vw] transition-opacity duration-300 ${more ? "opacity-100" : "opacity-0"}`}>
           <span className="rounded-full bg-ink px-4 py-1.5 text-sm text-cloud">Sigue leyendo ↓</span>
         </div>
       )}
