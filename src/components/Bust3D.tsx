@@ -14,7 +14,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
 //    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Hay muchas más nubes de las que caben en
 //    pantalla (reserva fuera de la vista). Con la cámara activa, el viento de las nubes sopla hacia donde mueves la mano
-//    (arriba, abajo, izquierda o derecha) y más fuerte cuanto más rápido la mueves (solo se mide el movimiento: sin gestos).
+//    (arriba, abajo, izquierda o derecha) y más fuerte cuanto más rápido la mueves; un barrido rápido de lado las lanza;
+//    y abrir/cerrar pulgar e índice, como en un trackpad, acerca o aleja el busto y las nubes (zoom de pellizco).
 //  · Modo noche (prop `night`, que decide BustPage): fondo oscuro, luz de luna con contraluz azul en el busto y nubes
 //    iluminadas por la luna; la luz pasa de día a noche con un fundido.
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
@@ -54,6 +55,20 @@ const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 // se calman solas.
 const WIND_MAX = 30;
 const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
+// Zoom de pellizco, como en un trackpad: abrir pulgar e índice acerca; cerrarlos aleja. Solo cuenta si es un gesto
+// rápido (más lento es relajar la mano para volver a empezar) y si la palma está casi quieta.
+const ZOOM_MIN = 0.85;
+const ZOOM_MAX = 2.5;
+const PINCH_RATE = 0.8; // variación de ln(separación) por segundo por debajo de la cual no se hace zoom
+const PINCH_GAIN = 0.7; // ln(zoom) por cada ln de separación que sobrepasa el umbral
+const PINCH_PALM_MAX = 4; // largos de mano por segundo: si la palma va más rápido es un barrido, no un pellizco
+// Barrido: un golpe de mano rápido y de lado lanza las nubes en ese sentido; el lanzamiento se apaga solo (aunque la
+// mano ya haya salido de la imagen). Fuerza en unidades de viento (1 = la brisa de siempre).
+const SWEEP_MIN = 3.5; // largos de mano por segundo: por debajo no es un barrido
+const SWEEP_MAX = 14; // a esta velocidad el lanzamiento es el máximo
+const FLING_MIN = 25;
+const FLING_MAX = 110;
+const FLING_TAU = 1.6; // s que tarda en apagarse (~63 %)
 const HAND_DIR_SMOOTH = 0.4; // suavizado de la dirección de la mano (0..1; más alto = más directo)
 const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no suma
 const HAND_MAX = 10; // a esta velocidad (un saludo enérgico) el viento llega al máximo
@@ -93,10 +108,13 @@ function LiveBust({ night }: { night: boolean }) {
   const sky = useRef<SkyControls>({ ...SKY_DEFAULTS, count: 16, dirX: 1, dirY: 0 }); // controles de las nubes (fuerza y dirección del viento: la mano)
   const windVec = useRef({ x: 1, y: 0 }); // viento actual (x a la derecha, y hacia arriba); en reposo, la brisa de siempre
   const handDir = useRef({ vx: 0, vy: 0, x: 1, y: 0 }); // movimiento de la mano suavizado y su última dirección clara
+  const fling = useRef(0); // lanzamiento horizontal del último barrido (viento extra, con signo: + = derecha)
+  const zoomT = useRef({ ln: 0, cur: 0, lnd: null as number | null }); // ln(zoom): objetivo y valor suavizado; ln de la separación pulgar-índice
+  const zoomBar = useRef<HTMLDivElement>(null);
   const hand = useRef(0); // esfuerzo de la mano, 0..1
   const windBar = useRef<HTMLDivElement>(null);
   const head = useRef<HeadTarget>({ active: false, yaw: 0, pitch: 0, roll: 0 }); // objetivo que marca la cámara (ya en espejo)
-  const api = useRef<{ reset: () => void; setNight: (n: boolean) => void } | null>(null);
+  const api = useRef<{ reset: () => void; setNight: (n: boolean) => void; setZoom: (z: number) => void } | null>(null);
   const nightRef = useRef(night); // para la escena, que se crea de forma asíncrona
   useEffect(() => {
     nightRef.current = night;
@@ -154,6 +172,7 @@ function LiveBust({ night }: { night: boolean }) {
     if (!m) {
       hand.current = 0;
       Object.assign(d, { vx: 0, vy: 0, x: 1, y: 0 });
+      zoomT.current.lnd = null; // el zoom se queda como está; al volver la mano se empieza a medir de nuevo
       return;
     }
     hand.current = HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1);
@@ -165,6 +184,22 @@ function LiveBust({ night }: { night: boolean }) {
       d.x = d.vx / sp;
       d.y = d.vy / sp;
     } // más lento que eso la dirección no es fiable: se mantiene la última
+
+    // Barrido: movimiento rápido y sobre todo horizontal.
+    const adx = Math.abs(d.vx), ady = Math.abs(d.vy);
+    if (adx > SWEEP_MIN && adx > 1.5 * ady) {
+      const target = Math.sign(d.vx) * (FLING_MIN + (FLING_MAX - FLING_MIN) * clamp((adx - SWEEP_MIN) / (SWEEP_MAX - SWEEP_MIN), 0, 1));
+      if (Math.sign(fling.current) !== Math.sign(target) || Math.abs(target) > Math.abs(fling.current)) fling.current = target;
+    }
+
+    // Zoom de pellizco: cambio rápido de la separación entre pulgar e índice, con la palma casi quieta.
+    const z = zoomT.current, lnd = Math.log(clamp(m.pinch, 0.06, 2));
+    const before = z.lnd ?? lnd;
+    z.lnd = before + (lnd - before) * 0.6;
+    const rate = (z.lnd - before) / Math.max(m.dt, 0.01);
+    if (m.speed < PINCH_PALM_MAX && Math.abs(rate) > PINCH_RATE) {
+      z.ln = clamp(z.ln + Math.sign(rate) * (Math.abs(rate) - PINCH_RATE) * m.dt * PINCH_GAIN, Math.log(ZOOM_MIN), Math.log(ZOOM_MAX));
+    }
   };
 
   // Cámara opcional: solo si la persona la activa. La imagen se procesa en el dispositivo y no se guarda.
@@ -187,6 +222,7 @@ function LiveBust({ night }: { night: boolean }) {
     cal.current = newCal();
     hand.current = 0;
     Object.assign(handDir.current, { vx: 0, vy: 0, x: 1, y: 0 });
+    zoomT.current.lnd = null;
     setCam("off");
   };
   // "Centrar": la postura actual pasa a ser el frente.
@@ -195,39 +231,63 @@ function LiveBust({ night }: { night: boolean }) {
     c.n = 0;
     c.sum = { yaw: 0, pitch: 0, roll: 0 };
     c.neutral = null;
+    zoomT.current.ln = 0; // «Centrar» también devuelve el zoom a 1
   };
 
   // Viento de las nubes: un vector (fuerza y dirección). Con la mano a la vista sopla hacia donde se mueve, de golpe y
-  // con más fuerza cuanto más rápida; al perderla se calma solo hasta la brisa de siempre. Sin cámara vuelve a (1, 0) y
-  // el bucle se detiene.
+  // con más fuerza cuanto más rápida; encima se suma el lanzamiento del último barrido, que sigue aunque la mano ya no
+  // esté. Todo se calma solo hasta la brisa de siempre. Aquí también se suaviza el zoom. Sin cámara todo vuelve a su sitio
+  // y el bucle se detiene.
   const camOn = cam === "on";
   useEffect(() => {
-    const rest = () => windVec.current.x === 1 && windVec.current.y === 0;
-    if (!camOn && rest()) return;
-    let raf = 0, last = 0;
+    const atRest = () => {
+      const v = windVec.current, z = zoomT.current;
+      return v.x === 1 && v.y === 0 && fling.current === 0 && Math.abs(z.cur) < 0.0005 && z.ln === 0;
+    };
+    if (!camOn && atRest()) return;
+    let raf = 0, last = 0, shownZoom = 1;
     const frame = (now: number) => {
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
       last = now;
-      if (!camOn) hand.current = 0;
+      const z = zoomT.current;
+      if (!camOn) {
+        hand.current = 0;
+        z.ln = 0;
+      }
       const lvl = hand.current, d = handDir.current, v = windVec.current;
       const mag = 1 + lvl * (WIND_MAX - 1);
       const tx = lvl > 0 ? d.x * mag : 1, ty = lvl > 0 ? d.y * mag : 0;
       const k = 1 - Math.exp(-(lvl > 0 ? 7 : 1.1) * dt);
       v.x += (tx - v.x) * k;
       v.y += (ty - v.y) * k;
-      const m = Math.hypot(v.x, v.y), c = sky.current;
+      fling.current *= Math.exp(-dt / FLING_TAU);
+      if (Math.abs(fling.current) < 0.5) fling.current = 0;
+      const wx = v.x + fling.current, m = Math.hypot(wx, v.y), c = sky.current;
       c.wind = m;
       if (m > 1e-3) {
-        c.dirX = v.x / m;
+        c.dirX = wx / m;
         c.dirY = v.y / m;
       }
       if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((m - 1) / (WIND_MAX - 1), 0, 1)})`;
-      if (!camOn && Math.abs(v.x - 1) < 0.01 && Math.abs(v.y) < 0.01) {
+
+      // Zoom: el busto y las nubes se acercan o alejan a la vez.
+      z.cur += (z.ln - z.cur) * (1 - Math.exp(-8 * dt));
+      if (Math.abs(z.ln - z.cur) < 0.0005) z.cur = z.ln;
+      const zoom = Math.exp(z.cur);
+      c.zoom = zoom;
+      if (Math.abs(zoom - shownZoom) > 0.0005) {
+        shownZoom = zoom;
+        api.current?.setZoom(zoom);
+        if (sides.current) sides.current.style.opacity = zoom > 1.25 ? "0" : "1"; // los textos laterales se apartan
+      }
+      if (zoomBar.current) zoomBar.current.style.transform = `scaleX(${clamp((z.cur - Math.log(ZOOM_MIN)) / (Math.log(ZOOM_MAX) - Math.log(ZOOM_MIN)), 0, 1)})`;
+
+      if (!camOn && Math.abs(v.x - 1) < 0.01 && Math.abs(v.y) < 0.01 && fling.current === 0 && z.cur === 0) {
         v.x = 1;
         v.y = 0;
-        c.wind = 1;
-        c.dirX = 1;
-        c.dirY = 0;
+        Object.assign(c, { wind: 1, dirX: 1, dirY: 0, zoom: 1 });
+        api.current?.setZoom(1);
+        if (sides.current) sides.current.style.opacity = "1";
         return;
       }
       raf = requestAnimationFrame(frame);
@@ -370,6 +430,7 @@ function LiveBust({ night }: { night: boolean }) {
         scene.add(pivot);
 
         const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
+        let baseDist = 4, zoom = 1; // distancia de la cámara sin zoom, y zoom actual (> 1 acerca)
         const fit = () => {
           const W = st.clientWidth, H = st.clientHeight;
           if (!W || !H) return;
@@ -377,8 +438,8 @@ function LiveBust({ night }: { night: boolean }) {
           renderer.setSize(W, H, false);
           camera.aspect = W / H;
           // Distancia a la que el busto (1 de alto) ocupa figH píxeles.
-          const d = H / figH / (2 * Math.tan((camera.fov * Math.PI) / 360));
-          camera.position.set(0, 0, d);
+          baseDist = H / figH / (2 * Math.tan((camera.fov * Math.PI) / 360));
+          camera.position.set(0, 0, baseDist / zoom);
           camera.lookAt(0, 0, 0);
           camera.updateProjectionMatrix();
           renderer.render(scene, camera);
@@ -449,7 +510,12 @@ function LiveBust({ night }: { night: boolean }) {
           vYaw = vPitch = 0;
           kick();
         };
-        api.current = { reset, setNight };
+        const setZoom = (z: number) => {
+          zoom = z;
+          camera.position.z = baseDist / zoom;
+          renderer.render(scene, camera);
+        };
+        api.current = { reset, setNight, setZoom };
         setNight(nightRef.current); // por si la persona cambió de modo mientras cargaba el modelo
 
         const onDown = (e: PointerEvent) => {
@@ -614,7 +680,7 @@ function LiveBust({ night }: { night: boolean }) {
 
         {/* "2894_ Studio" y la frase, sutiles, a los lados del busto (en móvil, arriba) */}
         <p className="sr-only">2894_ Studio. Una nueva forma de diseñar</p>
-        <div ref={sides} aria-hidden className={`pointer-events-none absolute inset-0 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] ${muted} max-sm:[&>span]:!top-[calc(84px+env(safe-area-inset-top,0px))] sm:text-xs`}>
+        <div ref={sides} aria-hidden className={`pointer-events-none absolute inset-0 transition-opacity duration-500 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] ${muted} max-sm:[&>span]:!top-[calc(84px+env(safe-area-inset-top,0px))] sm:text-xs`}>
           <span data-side="l" className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] block sm:text-right">
             2894<span className="blink">_</span>
             <br />
@@ -650,6 +716,13 @@ function LiveBust({ night }: { night: boolean }) {
                 <span ref={windBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0)" }} />
               </span>
             </div>
+            {/* Zoom de pellizco */}
+            <div aria-hidden className="flex items-center gap-2 bg-ink px-3 pb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cloud/80">
+              Zoom
+              <span className="h-1 flex-1 overflow-hidden rounded-full bg-cloud/20">
+                <span ref={zoomBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0.15)" }} />
+              </span>
+            </div>
             <div className={`grid grid-cols-2 ${night ? "bg-white/10" : "bg-white/90"}`}>
               <button type="button" onClick={recenter} className={`flex min-h-11 items-center justify-center text-xs font-medium ${night ? "text-cloud hover:bg-white/20" : "text-ink hover:bg-white"}`}>
                 Centrar
@@ -660,7 +733,7 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes siguen a tu mano: se van hacia donde la mueves (arriba, abajo, izquierda o derecha) y más rápido cuanto más rápido la muevas. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes siguen a tu mano: se van hacia donde la mueves, y un barrido rápido de lado las lanza. Abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
@@ -674,7 +747,7 @@ function LiveBust({ night }: { night: boolean }) {
                 <CameraIcon pulse={cam === "asking"} />
               </button>
               <p className={`max-w-[16rem] text-right text-xs ${note}`}>
-                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Solo se sigue el movimiento de la cabeza y de la mano, no los gestos; la imagen se procesa en tu dispositivo y no se guarda."}
+                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Se sigue el movimiento de la cabeza y de la mano (y la apertura de pulgar e índice para el zoom), no las expresiones; la imagen se procesa en tu dispositivo y no se guarda."}
               </p>
             </>
           )}

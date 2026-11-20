@@ -18,10 +18,10 @@ const COUNT = 7; // nubes del cielo de Grow
 // Modo con reserva (`reserve`): hay muchas más nubes de las que caben en pantalla, repartidas por un "toro" bastante
 // mayor que la vista (se envuelve por los cuatro lados). El viento las empuja en cualquier dirección y, como siempre
 // hay nubes esperando fuera de la vista, nunca se vacía el cielo. Solo se pintan las que pisan la vista (máx. RESERVE_SLOTS).
-const RESERVE_SLOTS = 16;
-const POOL_SIZE = 26;
-const PX = 15; // ancho del toro (x ∈ ±7,5): más que la vista más ancha (~±5,9 en el fondo) más media nube
-const PY = 11; // alto del toro (alrededor de la altura de la cámara)
+const RESERVE_SLOTS = 18;
+const POOL_SIZE = 28;
+const PX = 16; // ancho del toro (x ∈ ±8): más que la vista más ancha (con zoom-out incluido) más media nube
+const PY = 12; // alto del toro (alrededor de la altura de la cámara)
 
 const makeFrag = (COUNT: number) => `#version 300 es
 precision highp float;
@@ -185,7 +185,8 @@ const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) 
 // lit/shade: color de la cara iluminada y de la sombra (por defecto, las nubes de Magritte).
 // Controles del cielo (Grow): cantidad de nubes, tamaño, viento y suavidad de los bordes.
 // `dirX`/`dirY` (opcionales): dirección del viento (vector unitario; por defecto, hacia la derecha). `wind` es su fuerza.
-export type SkyControls = { count: number; size: number; wind: number; softness: number; dirX?: number; dirY?: number };
+// `zoom` (opcional, 1 por defecto): acerca (> 1) o aleja (< 1) la vista de las nubes.
+export type SkyControls = { count: number; size: number; wind: number; softness: number; dirX?: number; dirY?: number; zoom?: number };
 export const SKY_DEFAULTS: SkyControls = { count: 7, size: 1, wind: 1, softness: 1 };
 
 export function CloudSky({
@@ -316,7 +317,7 @@ export function CloudSky({
       }
     };
 
-    const viewScale = (aspect: number) => Math.min(3.2, Math.max(1.85, 2.4 / aspect));
+    const viewScale = (aspect: number) => Math.min(3.2, Math.max(1.85, 2.4 / aspect)) / Math.max(0.3, controlsRef?.current.zoom ?? 1);
     const toWorld = (cx: number, cy: number) => {
       const r = canvas.getBoundingClientRect();
       const nx = (cx - r.left) / r.width, ny = (cy - r.top) / r.height, aspect = r.width / r.height, S = viewScale(aspect);
