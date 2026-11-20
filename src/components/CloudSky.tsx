@@ -14,9 +14,16 @@ void main(){
   gl_Position = vec4(x * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
-const COUNT = 7;
+const COUNT = 7; // nubes del cielo de Grow
+// Modo con reserva (`reserve`): hay muchas más nubes de las que caben en pantalla, repartidas por un "toro" bastante
+// mayor que la vista (se envuelve por los cuatro lados). El viento las empuja en cualquier dirección y, como siempre
+// hay nubes esperando fuera de la vista, nunca se vacía el cielo. Solo se pintan las que pisan la vista (máx. RESERVE_SLOTS).
+const RESERVE_SLOTS = 16;
+const POOL_SIZE = 26;
+const PX = 15; // ancho del toro (x ∈ ±7,5): más que la vista más ancha (~±5,9 en el fondo) más media nube
+const PY = 11; // alto del toro (alrededor de la altura de la cámara)
 
-const FRAG = `#version 300 es
+const makeFrag = (COUNT: number) => `#version 300 es
 precision highp float;
 precision highp sampler2D;
 out vec4 outColor;
@@ -29,6 +36,7 @@ uniform int uSteps;
 uniform sampler2D uField;
 uniform vec4 uFieldRect;
 uniform vec4 uClouds[${COUNT}];
+uniform float uSeeds[${COUNT}]; // semilla de forma de cada nube: no depende de su hueco, para que no cambie al entrar y salir
 uniform vec3 uLit;
 uniform vec3 uShade;
 uniform int uCount;
@@ -98,10 +106,10 @@ float density(vec3 p, int oct){
     vec4 c = uClouds[i];
     vec3 l = (q - c.xyz) / c.w;
     if(dot(l, l) > 6.5) continue;      // fuera de la caja de esta nube
-    float d = cloudSDF(l, float(i));
+    float d = cloudSDF(l, uSeeds[i]);
     if(d > 0.5) continue;
     vec3 w = vec3(uPhase * 0.05, -uPhase * 0.02, uPhase * 0.04);
-    float n = fbm(l * 1.45 + w + float(i) * 3.1, oct);
+    float n = fbm(l * 1.45 + w + uSeeds[i] * 3.1, oct);
     d += (n - 0.5) * 0.95 * uSoft;
     dens = max(dens, clamp(-d * 2.6, 0.0, 1.0));
   }
@@ -155,11 +163,29 @@ const CLOUDS: [number, number, number, number][] = [
   [3.6, -1.45, -1.1, 0.46],
 ];
 
+const CAM_Y = 0.25; // altura de la cámara (igual que CAMY dentro del componente)
+const wrap = (v: number, period: number) => ((((v + period / 2) % period) + period) % period) - period / 2;
+
+// Las 7 nubes de siempre (misma vista inicial) y, repartidas con una semilla fija por el resto del toro y fuera de esa
+// vista inicial, las de reserva.
+const POOL: [number, number, number, number][] = (() => {
+  const out = [...CLOUDS];
+  let seed = 20241120;
+  const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  for (let tries = 0; out.length < POOL_SIZE && tries < 4000; tries++) {
+    const x = (rnd() - 0.5) * PX, y = CAM_Y + (rnd() - 0.5) * PY, z = -1.7 + rnd() * 1.9, sc = 0.42 + rnd() * 0.2;
+    if (Math.abs(x) < 4.8 && Math.abs(y - CAM_Y) < 2.5) continue; // la vista inicial se queda como estaba
+    if (out.every(([ox, oy]) => Math.hypot(wrap(ox - x, PX), wrap(oy - y, PY)) > 1.6)) out.push([x, y, z, sc]);
+  }
+  return out;
+})();
+
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
 // lit/shade: color de la cara iluminada y de la sombra (por defecto, las nubes de Magritte).
 // Controles del cielo (Grow): cantidad de nubes, tamaño, viento y suavidad de los bordes.
-export type SkyControls = { count: number; size: number; wind: number; softness: number };
+// `dirX`/`dirY` (opcionales): dirección del viento (vector unitario; por defecto, hacia la derecha). `wind` es su fuerza.
+export type SkyControls = { count: number; size: number; wind: number; softness: number; dirX?: number; dirY?: number };
 export const SKY_DEFAULTS: SkyControls = { count: 7, size: 1, wind: 1, softness: 1 };
 
 export function CloudSky({
@@ -167,7 +193,9 @@ export function CloudSky({
   lit: litHex = "#fefefe",
   shade: shadeHex = "#9db4d4",
   controls: controlsRef,
+  reserve = false,
 }: {
+  reserve?: boolean; // muchas más nubes fuera de la vista, y el viento puede soplar en cualquier dirección
   active?: boolean;
   lit?: string;
   shade?: string;
@@ -200,7 +228,8 @@ export function CloudSky({
       return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
     };
     const vs = compile(gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+    const slots = reserve ? RESERVE_SLOTS : COUNT;
+    const fs = compile(gl.FRAGMENT_SHADER, makeFrag(slots));
     if (!vs || !fs) {
       el.dataset.fallback = "1";
       canvas.remove();
@@ -221,7 +250,7 @@ export function CloudSky({
     const U = (n: string) => gl.getUniformLocation(prog, n);
     const L = {
       res: U("uRes"), scale: U("uScale"), camY: U("uCamY"), phase: U("uPhase"), steps: U("uSteps"),
-      field: U("uField"), rect: U("uFieldRect"), clouds: U("uClouds"), lit: U("uLit"), shade: U("uShade"), count: U("uCount"), soft: U("uSoft"),
+      field: U("uField"), rect: U("uFieldRect"), clouds: U("uClouds"), seeds: U("uSeeds"), lit: U("uLit"), shade: U("uShade"), count: U("uCount"), soft: U("uSoft"),
     };
 
     // Campo de desplazamiento (muelle + onda), como en el laboratorio.
@@ -378,8 +407,11 @@ export function CloudSky({
 
     const lit = hex(litHex);
     const shade = hex(shadeHex);
-    const clouds = new Float32Array(COUNT * 4);
+    const clouds = new Float32Array(slots * 4);
+    const seeds = Float32Array.from({ length: slots }, (_, i) => i);
     const drift = new Float32Array(COUNT);
+    const driftX = new Float32Array(POOL.length), driftY = new Float32Array(POOL.length);
+    let shown = 0; // nubes que se pintan en este cuadro (modo con reserva)
     let last = performance.now(), phase = 0, ema = 1 / 60, frames = 0, nextAdapt = 0;
     let raf = 0;
     const frame = (now: number) => {
@@ -391,14 +423,41 @@ export function CloudSky({
       phase += dt * (reduce ? 0.2 : 1);
       updatePointer(dt);
       simulate(dt);
-      // las nubes derivan despacio con el viento y vuelven a entrar por el otro lado
-      CLOUDS.forEach(([x, y, z, s], i) => {
+      if (!reserve) {
+        // las nubes derivan despacio con el viento y vuelven a entrar por el otro lado
+        CLOUDS.forEach(([x, y, z, s], i) => {
+          const c = controlsRef?.current;
+          drift[i] += dt * 0.03 * (c?.wind ?? 1) * (1 + (i % 3) * 0.3);
+          let cx = x + drift[i];
+          cx = ((((cx + 5) % 10) + 10) % 10) - 5;
+          clouds.set([cx, y, z, s * (c?.size ?? 1)], i * 4);
+        });
+      } else {
+        // Todas las nubes del toro derivan con el viento (en x e y) y se envuelven por los cuatro lados; al shader
+        // solo van las que tocan la vista (con margen para el tamaño de la nube y el empuje del cursor); si sobran, se
+        // descartan las más alejadas del borde de la vista.
         const c = controlsRef?.current;
-        drift[i] += dt * 0.03 * (c?.wind ?? 1) * (1 + (i % 3) * 0.3);
-        let cx = x + drift[i];
-        cx = ((((cx + 5) % 10) + 10) % 10) - 5;
-        clouds.set([cx, y, z, s * (c?.size ?? 1)], i * 4);
-      });
+        const wind = c?.wind ?? 1, dx = c?.dirX ?? 1, dy = c?.dirY ?? 0, size = c?.size ?? 1;
+        const aspect = W / H, S = viewScale(aspect);
+        const hit: { i: number; x: number; y: number; d: number }[] = [];
+        POOL.forEach(([x, y, z, sc], i) => {
+          const f = dt * 0.03 * wind * (1 + (i % 3) * 0.3); // cada nube a su ritmo (paralaje)
+          driftX[i] += f * dx;
+          driftY[i] += f * dy;
+          const cx = wrap(x + driftX[i], PX), cy = CAM_Y + wrap(y + driftY[i] - CAM_Y, PY);
+          const k = (5 - z) / 5, m = 2.55 * sc * size + 0.35; // radio de la caja de la nube + margen para el empuje del cursor
+          const hx = S * aspect * k, hy = S * k; // media vista, a la profundidad de esta nube
+          const ex = Math.abs(cx), ey = Math.abs(cy - CAM_Y);
+          if (ex < hx + m && ey < hy + m) hit.push({ i, x: cx, y: cy, d: Math.max(ex / hx, ey / hy) }); // d = 1: en el borde
+        });
+        hit.sort((a, b) => a.d - b.d);
+        shown = Math.min(hit.length, slots, Math.round(c?.count ?? slots));
+        for (let n = 0; n < shown; n++) {
+          const { i, x, y } = hit[n];
+          clouds.set([x, y, POOL[i][2], POOL[i][3] * size], n * 4);
+          seeds[n] = i;
+        }
+      }
       gl.viewport(0, 0, W, H);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -411,9 +470,10 @@ export function CloudSky({
       gl.uniform1f(L.phase, phase);
       gl.uniform1i(L.steps, 48);
       gl.uniform4fv(L.clouds, clouds);
+      gl.uniform1fv(L.seeds, seeds);
       gl.uniform3fv(L.lit, lit);
       gl.uniform3fv(L.shade, shade);
-      gl.uniform1i(L.count, Math.round(controlsRef?.current.count ?? COUNT));
+      gl.uniform1i(L.count, reserve ? shown : Math.round(controlsRef?.current.count ?? COUNT));
       gl.uniform1f(L.soft, controlsRef?.current.softness ?? 1);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -445,7 +505,7 @@ export function CloudSky({
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };
-  }, [litHex, shadeHex, controlsRef]);
+  }, [litHex, shadeHex, controlsRef, reserve]);
 
   return (
     <div ref={host} aria-hidden className="group/sky absolute inset-0">

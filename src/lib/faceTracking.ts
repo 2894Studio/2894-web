@@ -79,8 +79,10 @@ function eulerYXZ(d: number[]) {
 }
 
 // Movimiento de la mano: velocidad del centro de la palma en "largos de mano" por segundo (no depende de lo cerca que
-// esté de la cámara). `null`: ya no se ve ninguna mano. Solo se mide el movimiento: ni gestos ni la forma de la mano.
-export type HandMotion = { speed: number };
+// esté de la cámara). `vx`/`vy`: esa misma velocidad por ejes, tal como la ve la persona en el espejo: vx > 0 es hacia su
+// derecha (la derecha de la pantalla) y vy > 0 es hacia abajo. `null`: ya no se ve ninguna mano. Solo se mide el
+// movimiento: ni gestos ni la forma de la mano.
+export type HandMotion = { speed: number; vx: number; vy: number };
 const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
 // `onHand` (opcional): mide también el movimiento de la mano con la misma cámara. Si ese modelo no carga, el seguimiento
@@ -126,7 +128,11 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
       const y = (PALM.reduce((a, i) => a + lm[i].y, 0) / PALM.length) * H;
       const size = Math.hypot((lm[9].x - lm[0].x) * W, (lm[9].y - lm[0].y) * H) || 1; // muñeca → base del dedo corazón
       const t = video.currentTime;
-      if (prev && t > prev.t) onHand!({ speed: Math.hypot(x - prev.x, y - prev.y) / size / (t - prev.t) });
+      if (prev && t > prev.t) {
+        const dt = t - prev.t;
+        // La imagen de la cámara no va en espejo, pero la persona se ve en espejo: el eje horizontal cambia de signo.
+        onHand!({ speed: Math.hypot(x - prev.x, y - prev.y) / size / dt, vx: -(x - prev.x) / size / dt, vy: (y - prev.y) / size / dt });
+      }
       prev = { x, y, t };
     };
 

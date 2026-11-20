@@ -12,8 +12,9 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //  · Cámara (opcional): el busto repite el movimiento de la cabeza de la persona en los tres ejes (giro, cabeceo e
 //    inclinación). Solo movimiento: no se leen gestos ni expresiones.
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
-//    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Con la cámara activa, el viento de las
-//    nubes sube con el movimiento de la mano (solo se mide la velocidad: sin gestos).
+//    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Hay muchas más nubes de las que caben en
+//    pantalla (reserva fuera de la vista). Con la cámara activa, el viento de las nubes sopla hacia donde mueves la mano
+//    (arriba, abajo, izquierda o derecha) y más fuerte cuanto más rápido la mueves (solo se mide el movimiento: sin gestos).
 //  · Modo noche (prop `night`, que decide BustPage): fondo oscuro, luz de luna con contraluz azul en el busto y nubes
 //    iluminadas por la luna; la luz pasa de día a noche con un fundido.
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
@@ -48,10 +49,12 @@ const HEAD_GAIN = 1; // 1 = el busto gira lo mismo que la cabeza
 const HEAD_SMOOTH = 0.5; // suavizado de la medición (0..1; más alto = más directo)
 const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 
-// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano las nubes se aceleran de golpe y,
-// si la mano se mueve, aún más. Al perder la mano se calman solas.
+// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano las nubes se aceleran de golpe hacia
+// donde se mueve la mano (arriba, abajo, izquierda o derecha) y, cuanto más rápido la mueves, más. Al perder la mano
+// se calman solas.
 const WIND_MAX = 30;
 const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
+const HAND_DIR_SMOOTH = 0.4; // suavizado de la dirección de la mano (0..1; más alto = más directo)
 const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no suma
 const HAND_MAX = 10; // a esta velocidad (un saludo enérgico) el viento llega al máximo
 
@@ -87,7 +90,9 @@ function LiveBust({ night }: { night: boolean }) {
   const placeholder = useRef<HTMLDivElement>(null);
   const sides = useRef<HTMLDivElement>(null);
   const mirrorVideo = useRef<HTMLDivElement>(null);
-  const sky = useRef<SkyControls>({ ...SKY_DEFAULTS }); // controles de las nubes (el viento lo mueve la mano)
+  const sky = useRef<SkyControls>({ ...SKY_DEFAULTS, count: 16, dirX: 1, dirY: 0 }); // controles de las nubes (fuerza y dirección del viento: la mano)
+  const windVec = useRef({ x: 1, y: 0 }); // viento actual (x a la derecha, y hacia arriba); en reposo, la brisa de siempre
+  const handDir = useRef({ vx: 0, vy: 0, x: 1, y: 0 }); // movimiento de la mano suavizado y su última dirección clara
   const hand = useRef(0); // esfuerzo de la mano, 0..1
   const windBar = useRef<HTMLDivElement>(null);
   const head = useRef<HeadTarget>({ active: false, yaw: 0, pitch: 0, roll: 0 }); // objetivo que marca la cámara (ya en espejo)
@@ -145,7 +150,21 @@ function LiveBust({ night }: { night: boolean }) {
   };
 
   const onHand = (m: HandMotion | null) => {
-    hand.current = m ? HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1) : 0;
+    const d = handDir.current;
+    if (!m) {
+      hand.current = 0;
+      Object.assign(d, { vx: 0, vy: 0, x: 1, y: 0 });
+      return;
+    }
+    hand.current = HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1);
+    // Dirección del movimiento (suavizada): derecha/izquierda como en el espejo; arriba/abajo, con la y del cielo hacia arriba.
+    d.vx += (m.vx - d.vx) * HAND_DIR_SMOOTH;
+    d.vy += (-m.vy - d.vy) * HAND_DIR_SMOOTH;
+    const sp = Math.hypot(d.vx, d.vy);
+    if (sp > HAND_MIN) {
+      d.x = d.vx / sp;
+      d.y = d.vy / sp;
+    } // más lento que eso la dirección no es fiable: se mantiene la última
   };
 
   // Cámara opcional: solo si la persona la activa. La imagen se procesa en el dispositivo y no se guarda.
@@ -167,6 +186,7 @@ function LiveBust({ night }: { night: boolean }) {
     head.current = { active: false, yaw: 0, pitch: 0, roll: 0 };
     cal.current = newCal();
     hand.current = 0;
+    Object.assign(handDir.current, { vx: 0, vy: 0, x: 1, y: 0 });
     setCam("off");
   };
   // "Centrar": la postura actual pasa a ser el frente.
@@ -177,20 +197,37 @@ function LiveBust({ night }: { night: boolean }) {
     c.neutral = null;
   };
 
-  // Viento de las nubes: sube de golpe con la mano y se calma poco a poco; sin cámara vuelve a 1 y el bucle se detiene.
+  // Viento de las nubes: un vector (fuerza y dirección). Con la mano a la vista sopla hacia donde se mueve, de golpe y
+  // con más fuerza cuanto más rápida; al perderla se calma solo hasta la brisa de siempre. Sin cámara vuelve a (1, 0) y
+  // el bucle se detiene.
   const camOn = cam === "on";
   useEffect(() => {
-    if (!camOn && sky.current.wind === 1) return;
+    const rest = () => windVec.current.x === 1 && windVec.current.y === 0;
+    if (!camOn && rest()) return;
     let raf = 0, last = 0;
     const frame = (now: number) => {
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
       last = now;
       if (!camOn) hand.current = 0;
-      const w = sky.current.wind, target = 1 + hand.current * (WIND_MAX - 1);
-      sky.current.wind = w + (target - w) * (1 - Math.exp(-(target > w ? 8 : 1.1) * dt));
-      if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((sky.current.wind - 1) / (WIND_MAX - 1), 0, 1)})`;
-      if (!camOn && Math.abs(sky.current.wind - 1) < 0.01) {
-        sky.current.wind = 1;
+      const lvl = hand.current, d = handDir.current, v = windVec.current;
+      const mag = 1 + lvl * (WIND_MAX - 1);
+      const tx = lvl > 0 ? d.x * mag : 1, ty = lvl > 0 ? d.y * mag : 0;
+      const k = 1 - Math.exp(-(lvl > 0 ? 7 : 1.1) * dt);
+      v.x += (tx - v.x) * k;
+      v.y += (ty - v.y) * k;
+      const m = Math.hypot(v.x, v.y), c = sky.current;
+      c.wind = m;
+      if (m > 1e-3) {
+        c.dirX = v.x / m;
+        c.dirY = v.y / m;
+      }
+      if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((m - 1) / (WIND_MAX - 1), 0, 1)})`;
+      if (!camOn && Math.abs(v.x - 1) < 0.01 && Math.abs(v.y) < 0.01) {
+        v.x = 1;
+        v.y = 0;
+        c.wind = 1;
+        c.dirX = 1;
+        c.dirY = 0;
         return;
       }
       raf = requestAnimationFrame(frame);
@@ -546,7 +583,7 @@ function LiveBust({ night }: { night: boolean }) {
       <div ref={stage} className={`relative h-svh overflow-hidden transition-colors duration-700 ${night ? "bg-[#070a14]" : "bg-cloud"}`}>
         {/* Nubes de Grow, sin cielo: detrás de todo lo demás */}
         <div aria-hidden className={`absolute inset-0 transition-opacity duration-[1400ms] ${skies ? "opacity-100" : "opacity-0"}`}>
-          {skies && <CloudSky controls={sky} lit={sk.lit} shade={sk.shade} />}
+          {skies && <CloudSky controls={sky} reserve lit={sk.lit} shade={sk.shade} />}
         </div>
 
         {/* Busto 2D: se ve mientras carga el 3D y si este falla */}
@@ -623,7 +660,7 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes se aceleran en cuanto te ven la mano, y aún más si la sacudes. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes siguen a tu mano: se van hacia donde la mueves (arriba, abajo, izquierda o derecha) y más rápido cuanto más rápido la muevas. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
