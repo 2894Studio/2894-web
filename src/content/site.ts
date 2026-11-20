@@ -51,8 +51,8 @@ export const services = [
   },
   {
     key: "Apply",
-    text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento.",
-    items: ["Creación de herramientas", "Creación de productos", "Sistema de diseño", "Creación de contenido con IA"],
+    text: "Vibe coding y diseño con IA: de la idea a un prototipo que tu equipo puede probar, con acompañamiento.",
+    items: ["Diseño con IA", "Rapid prototyping", "Design System con IA", "IA Content"],
   },
   {
     key: "Grow",
