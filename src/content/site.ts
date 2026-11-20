@@ -44,7 +44,11 @@ export const nav = [
 // Servicios repartidos por fase (propuesta, pendiente de validar con el estudio):
 // Discover = entender y decidir · Apply = construir con IA · Grow = que el equipo y la organización lo sostengan.
 export const services = [
-  { key: "Discover", text: "Research, formaciones, benchmark e identificación de problemas.", items: ["Investigación", "Consultoría"] },
+  {
+    key: "Discover",
+    text: "Research, trend analysis y benchmark para decidir qué diseñar, y cómo trabajar mejor.",
+    items: ["Trend analysis", "Problem Framing", "Foresight", "IA Maturity Assessment"],
+  },
   {
     key: "Apply",
     text: "Vibe coding y diseño con IA: prototipos que funcionan desde el primer día, flujos de trabajo y herramientas propias, con acompañamiento.",
