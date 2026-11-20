@@ -18,7 +18,7 @@ const pointsFor = (n: number) =>
 // Texto por defecto de la sección Proyectos mientras no se señala ningún proyecto.
 const INTRO = {
   title: "2894_",
-  text: "Estudio creativo multidisciplinar. Ayudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación y consultoría.",
+  text: "Estudio creativo multidisciplinar. Ayudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
 };
 const BASE_SPEED = 0.0024; // rad por frame
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -398,7 +398,7 @@ export function ProjectSphere({
         {/* Sin proyecto señalado: texto por defecto, en el mismo sitio y formato que la reseña. */}
         {!shown && (
           <div key="intro" className="label-in">
-            <h3 className="text-3xl font-light uppercase tracking-tight">{INTRO.title}</h3>
+            <h3 className="text-[28px] font-bold uppercase tracking-tight">{INTRO.title}</h3>
             <p className="mt-3 text-base">{INTRO.text}</p>
           </div>
         )}
