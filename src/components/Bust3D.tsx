@@ -14,6 +14,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
 //    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Con la cámara activa, el viento de las
 //    nubes sube con el movimiento de la mano (solo se mide la velocidad: sin gestos).
+//  · Modo noche (prop `night`, que decide BustPage): fondo oscuro, luz de luna con contraluz azul en el busto y nubes
+//    iluminadas por la luna; la luz pasa de día a noche con un fundido.
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
 // dependencias al proyecto. Mientras el modelo carga —o si WebGL/la descarga fallan— se ve el busto 2D de siempre.
 const THREE_URL = "https://esm.sh/three@0.170.0";
@@ -64,13 +66,20 @@ function figureBox(W: number, H: number) {
   return { bh2d, bw2d: (bh2d * IMG_W) / IMG_H, figH, figW: figH * MODEL_ASPECT };
 }
 
-export function Bust3DScene() {
+// Modo noche: luz de luna (fría y más tenue) con un contraluz azul que recorta la silueta sobre el fondo oscuro.
+const DAY = { env: 0.9, key: 1.6, rim: 0, exposure: 1, keyColor: [1, 1, 1] };
+const NIGHT = { env: 0.32, key: 0.75, rim: 2.4, exposure: 1.05, keyColor: [0.62, 0.72, 1] };
+const NIGHT_FADE = 0.7; // s que tarda la luz en pasar de día a noche
+const SKY_DAY = { lit: "#fefefe", shade: "#9db4d4" };
+const SKY_NIGHT = { lit: "#a9bbea", shade: "#222d57" }; // nubes a la luz de la luna
+
+export function Bust3DScene({ night = false }: { night?: boolean }) {
   const reduced = useReducedMotion();
-  if (reduced) return <StaticBust />;
-  return <LiveBust />;
+  if (reduced) return <StaticBust night={night} />;
+  return <LiveBust night={night} />;
 }
 
-function LiveBust() {
+function LiveBust({ night }: { night: boolean }) {
   const stage = useRef<HTMLDivElement>(null);
   const canvasBox = useRef<HTMLDivElement>(null);
   const placeholder = useRef<HTMLDivElement>(null);
@@ -80,7 +89,12 @@ function LiveBust() {
   const hand = useRef(0); // esfuerzo de la mano, 0..1
   const windBar = useRef<HTMLDivElement>(null);
   const head = useRef<HeadTarget>({ active: false, yaw: 0, pitch: 0, roll: 0 }); // objetivo que marca la cámara (ya en espejo)
-  const api = useRef<{ reset: () => void } | null>(null);
+  const api = useRef<{ reset: () => void; setNight: (n: boolean) => void } | null>(null);
+  const nightRef = useRef(night); // para la escena, que se crea de forma asíncrona
+  useEffect(() => {
+    nightRef.current = night;
+    api.current?.setNight(night);
+  }, [night]);
   const tracker = useRef<FaceTracker | null>(null);
   const cal = useRef<{ n: number; sum: Euler3; neutral: Euler3 | null; sm: Euler3 | null; vote: { s: number; n: number } }>(newCal());
   const [cam, setCam] = useState<CamState>("off");
@@ -245,10 +259,38 @@ function LiveBust() {
         const pmrem = new THREE.PMREMGenerator(renderer);
         const envTex = pmrem.fromScene(new envMod.RoomEnvironment(), 0.04).texture;
         scene.environment = envTex;
-        scene.environmentIntensity = 0.9;
-        const key = new THREE.DirectionalLight(0xffffff, 1.6);
+        const key = new THREE.DirectionalLight(0xffffff, DAY.key);
         key.position.set(1.5, 2, 3);
         scene.add(key);
+        const rim = new THREE.DirectionalLight(0x6f98ff, 0); // contraluz: solo de noche
+        rim.position.set(-2.5, 1.5, -2.5);
+        scene.add(rim);
+
+        // Día ↔ noche: la luz se interpola (k = 0 día, 1 noche) en vez de saltar.
+        let nk = nightRef.current ? 1 : 0, nTarget = nk, nRaf = 0, nLast = 0;
+        const applyLight = () => {
+          const mix = (a: number, b: number) => a + (b - a) * nk;
+          scene.environmentIntensity = mix(DAY.env, NIGHT.env);
+          key.intensity = mix(DAY.key, NIGHT.key);
+          key.color.setRGB(mix(DAY.keyColor[0], NIGHT.keyColor[0]), mix(DAY.keyColor[1], NIGHT.keyColor[1]), mix(DAY.keyColor[2], NIGHT.keyColor[2]));
+          rim.intensity = mix(DAY.rim, NIGHT.rim);
+          renderer.toneMappingExposure = mix(DAY.exposure, NIGHT.exposure);
+        };
+        const nightFrame = (now: number) => {
+          nRaf = 0;
+          const dt = nLast ? Math.min(0.05, (now - nLast) / 1000) : 1 / 60;
+          nLast = now;
+          nk += Math.sign(nTarget - nk) * Math.min(Math.abs(nTarget - nk), dt / NIGHT_FADE);
+          applyLight();
+          renderer.render(scene, camera);
+          if (alive && nk !== nTarget) nRaf = requestAnimationFrame(nightFrame);
+          else nLast = 0;
+        };
+        const setNight = (n: boolean) => {
+          nTarget = n ? 1 : 0;
+          if (!nRaf && alive && nk !== nTarget) nRaf = requestAnimationFrame(nightFrame);
+        };
+        applyLight();
 
         // El busto se normaliza a 1 de alto y se centra; `pivot` es lo que gira.
         const model = gltf.scene;
@@ -368,7 +410,8 @@ function LiveBust() {
           vYaw = vPitch = 0;
           kick();
         };
-        api.current = { reset };
+        api.current = { reset, setNight };
+        setNight(nightRef.current); // por si la persona cambió de modo mientras cargaba el modelo
 
         const onDown = (e: PointerEvent) => {
           if (head.current.active || (e.pointerType === "mouse" && e.button !== 0)) return;
@@ -453,6 +496,7 @@ function LiveBust() {
 
         cleanup = () => {
           cancelAnimationFrame(raf);
+          cancelAnimationFrame(nRaf);
           window.clearInterval(poll);
           ro.disconnect();
           box.removeEventListener("pointerdown", onDown);
@@ -490,27 +534,32 @@ function LiveBust() {
     };
   }, []);
 
+  const sk = night ? SKY_NIGHT : SKY_DAY;
+  const muted = night ? "text-cloud/60" : "text-ink/55";
+  const note = night ? "text-cloud/65" : "text-ink/60";
+  const pill = night ? "border-white/20 bg-white/10 text-cloud hover:bg-cloud hover:text-ink" : "border-ink/15 bg-white/80 text-ink hover:bg-ink hover:text-cloud";
+
   return (
     <section aria-label="2894_ Studio, una nueva forma de diseñar" className="relative h-svh">
-      <div ref={stage} className="relative h-svh overflow-hidden bg-cloud">
+      <div ref={stage} className={`relative h-svh overflow-hidden transition-colors duration-700 ${night ? "bg-[#070a14]" : "bg-cloud"}`}>
         {/* Nubes de Grow, sin cielo: detrás de todo lo demás */}
         <div aria-hidden className={`absolute inset-0 transition-opacity duration-[1400ms] ${skies ? "opacity-100" : "opacity-0"}`}>
-          {skies && <CloudSky controls={sky} />}
+          {skies && <CloudSky controls={sky} lit={sk.lit} shade={sk.shade} />}
         </div>
 
         {/* Busto 2D: se ve mientras carga el 3D y si este falla */}
         <div ref={placeholder} className={`absolute transition-opacity duration-700 ${ready ? "opacity-0" : "opacity-100"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={PLACEHOLDER} alt={ready ? "" : ALT} className="h-full w-full object-contain" />
+          <img src={PLACEHOLDER} alt={ready ? "" : ALT} className={`h-full w-full object-contain ${night ? "brightness-75" : ""}`} />
         </div>
 
         {progress !== null && (
-          <p role="status" className="pointer-events-none absolute bottom-[calc(28px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.22em] text-ink/55">
+          <p role="status" className={`pointer-events-none absolute bottom-[calc(28px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.22em] ${muted}`}>
             Cargando el busto en 3D{progress > 0 ? ` · ${progress} %` : "…"}
           </p>
         )}
         {ready && hint && !camOn && (
-          <p aria-hidden className="pointer-events-none absolute bottom-[calc(28px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.22em] text-ink/55">
+          <p aria-hidden className={`pointer-events-none absolute bottom-[calc(28px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.22em] ${muted}`}>
             Arrastra para verlo desde todos los ángulos
           </p>
         )}
@@ -521,12 +570,12 @@ function LiveBust() {
           tabIndex={ready ? 0 : -1}
           role="group"
           aria-label="Busto 3D de 2894_. Arrastra o usa las flechas del teclado para girarlo; doble clic o la tecla Inicio lo devuelven al frente."
-          className={`absolute inset-0 select-none outline-none transition-opacity duration-700 focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cobalt [filter:drop-shadow(0_18px_36px_rgb(11_11_13/0.12))] ${ready ? "opacity-100" : "pointer-events-none opacity-0"} ${camOn ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+          className={`absolute inset-0 select-none outline-none transition-opacity duration-700 focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cobalt ${night ? "[filter:drop-shadow(0_0_44px_rgb(125_183_255/0.22))]" : "[filter:drop-shadow(0_18px_36px_rgb(11_11_13/0.12))]"} ${ready ? "opacity-100" : "pointer-events-none opacity-0"} ${camOn ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
         />
 
         {/* "2894_ Studio" y la frase, sutiles, a los lados del busto (en móvil, arriba) */}
         <p className="sr-only">2894_ Studio. Una nueva forma de diseñar</p>
-        <div ref={sides} aria-hidden className="pointer-events-none absolute inset-0 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] text-ink/55 max-sm:[&>span]:!top-[calc(84px+env(safe-area-inset-top,0px))] sm:text-xs">
+        <div ref={sides} aria-hidden className={`pointer-events-none absolute inset-0 text-[11px] font-medium uppercase leading-[1.5] tracking-[0.22em] ${muted} max-sm:[&>span]:!top-[calc(84px+env(safe-area-inset-top,0px))] sm:text-xs`}>
           <span data-side="l" className="absolute left-[var(--gutter)] top-[calc(20px+env(safe-area-inset-top,0px))] block sm:text-right">
             2894<span className="blink">_</span>
             <br />
@@ -544,7 +593,7 @@ function LiveBust() {
           <button
             type="button"
             onClick={() => api.current?.reset()}
-            className="spring absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] left-[var(--gutter)] z-20 inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/15 bg-white/80 px-4 text-sm font-medium text-ink backdrop-blur-md hover:bg-ink hover:text-cloud"
+            className={`spring absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] left-[var(--gutter)] z-20 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-md ${pill}`}
           >
             <span aria-hidden>↺</span> Volver al frente
           </button>
@@ -553,7 +602,7 @@ function LiveBust() {
         {/* Cámara opcional */}
         <div className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 flex flex-col items-end gap-2">
           {/* El espejo existe siempre (oculto) para poder colocar la imagen de la cámara en cuanto llega. */}
-          <div hidden={!camOn} className="w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border border-white/60 bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]">
+          <div hidden={!camOn} className={`w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border ${night ? "border-white/15" : "border-white/60"} bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]`}>
             <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
             {/* Viento que levanta tu mano */}
             <div aria-hidden className="flex items-center gap-2 bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cloud/80">
@@ -562,28 +611,28 @@ function LiveBust() {
                 <span ref={windBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0)" }} />
               </span>
             </div>
-            <div className="grid grid-cols-2 bg-white/90">
-              <button type="button" onClick={recenter} className="flex min-h-11 items-center justify-center text-xs font-medium text-ink hover:bg-white">
+            <div className={`grid grid-cols-2 ${night ? "bg-white/10" : "bg-white/90"}`}>
+              <button type="button" onClick={recenter} className={`flex min-h-11 items-center justify-center text-xs font-medium ${night ? "text-cloud hover:bg-white/20" : "text-ink hover:bg-white"}`}>
                 Centrar
               </button>
-              <button type="button" onClick={stopCam} className="flex min-h-11 items-center justify-center border-l border-ink/10 text-xs font-medium text-ink hover:bg-white">
+              <button type="button" onClick={stopCam} className={`flex min-h-11 items-center justify-center border-l text-xs font-medium ${night ? "border-white/15 text-cloud hover:bg-white/20" : "border-ink/10 text-ink hover:bg-white"}`}>
                 Apagar
               </button>
             </div>
           </div>
           {camOn ? (
-            <p className="max-w-[16rem] text-right text-xs text-ink/60">El busto repite el movimiento de tu cabeza y el viento de las nubes sube con el de tu mano: sacúdela delante de la cámara. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y el viento de las nubes sube con el de tu mano: sacúdela delante de la cámara. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
                 type="button"
                 onClick={startCam}
                 disabled={cam === "asking"}
-                className="spring inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/15 bg-white/80 px-4 text-sm font-medium text-ink backdrop-blur-md hover:bg-ink hover:text-cloud disabled:opacity-60"
+                className={`spring inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-md disabled:opacity-60 ${pill}`}
               >
                 {cam === "asking" ? "Activando la cámara…" : "Cámara: mueve el busto y las nubes"}
               </button>
-              <p className="max-w-[16rem] text-right text-xs text-ink/60">
+              <p className={`max-w-[16rem] text-right text-xs ${note}`}>
                 {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Solo se sigue el movimiento de la cabeza y de la mano, no los gestos; la imagen se procesa en tu dispositivo y no se guarda."}
               </p>
             </>
@@ -599,12 +648,12 @@ function newCal() {
 }
 
 // Movimiento reducido: el busto quieto con los textos.
-function StaticBust() {
+function StaticBust({ night }: { night: boolean }) {
   return (
-    <section aria-label="2894_ Studio, una nueva forma de diseñar" className="grid min-h-svh place-items-center gap-8 bg-cloud px-[var(--gutter)] py-16 text-center">
-      <p className="text-xs font-medium uppercase tracking-[0.22em] text-ink/60">2894_ Studio · Una nueva forma de diseñar</p>
+    <section aria-label="2894_ Studio, una nueva forma de diseñar" className={`grid min-h-svh place-items-center gap-8 px-[var(--gutter)] py-16 text-center ${night ? "bg-[#070a14]" : "bg-cloud"}`}>
+      <p className={`text-xs font-medium uppercase tracking-[0.22em] ${night ? "text-cloud/65" : "text-ink/60"}`}>2894_ Studio · Una nueva forma de diseñar</p>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={PLACEHOLDER} alt={ALT} className="h-[70svh] w-auto" />
+      <img src={PLACEHOLDER} alt={ALT} className={`h-[70svh] w-auto ${night ? "brightness-75" : ""}`} />
     </section>
   );
 }
