@@ -127,7 +127,6 @@ export function ProjectSphere({
   // Hover calculado en cada fotograma (ver render): índice de la tarjeta bajo el cursor, o -1.
   const hoverRef = useRef(-1);
   const shown = pinned ?? hovered;
-  const showIntro = !controlled; // en la apertura (controlled) la presentación ya la da el título de la página
   // Proyecto abierto con un clic: crece y se coloca en el centro de la pantalla; los demás siguen girando muy tenues.
   const pinRef = useRef(-1);
   useEffect(() => {
@@ -394,10 +393,10 @@ export function ProjectSphere({
       <aside
         data-review
         aria-live="polite"
-        className={`mx-[var(--gutter)] mt-6 max-w-sm transition-[opacity,translate] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] lg:absolute lg:bottom-0 lg:left-[var(--gutter)] lg:mx-0 lg:mt-0 lg:w-[calc((100%-min(94vw,80svh))/2-2rem)] ${shown || showIntro ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+        className={`mx-[var(--gutter)] mt-6 max-w-sm transition-[opacity,translate] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] lg:absolute lg:bottom-0 lg:left-[var(--gutter)] lg:mx-0 lg:mt-0 lg:w-[calc((100%-min(94vw,80svh))/2-2rem)] translate-y-0 opacity-100`}
       >
-        {/* Sin proyecto señalado (solo en la sección Proyectos): texto por defecto, en el mismo sitio y formato que la reseña. */}
-        {!shown && showIntro && (
+        {/* Sin proyecto señalado: texto por defecto, en el mismo sitio y formato que la reseña. */}
+        {!shown && (
           <div key="intro" className="label-in">
             <h3 className="text-3xl font-light uppercase tracking-tight">{INTRO.title}</h3>
             <p className="mt-3 text-base">{INTRO.text}</p>
