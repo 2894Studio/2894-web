@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CloudSky, SKY_DEFAULTS, type SkyControls } from "@/components/CloudSky";
-import { startHeadPose, type FaceTracker, type HandMotion, type HeadPose } from "@/lib/faceTracking";
+import { startHeadPose, type FaceTracker, type HandMotion, type HandSide, type HeadPose } from "@/lib/faceTracking";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 
 // Página /busto con el busto en 3D real (GLB).
@@ -13,9 +13,9 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //    inclinación). Solo movimiento: no se leen gestos ni expresiones.
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
 //    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Hay muchas más nubes de las que caben en
-//    pantalla (reserva fuera de la vista). Con la cámara activa, el viento de las nubes sopla hacia donde mueves la mano
-//    (arriba, abajo, izquierda o derecha) y más fuerte cuanto más rápido la mueves; un barrido rápido de lado las lanza;
-//    y abrir/cerrar pulgar e índice, como en un trackpad, acerca o aleja el busto y las nubes (zoom de pellizco).
+//    pantalla (reserva fuera de la vista). Con la cámara activa, cada mano hace lo suyo: la DERECHA es el viento (las nubes
+//    soplan hacia donde la mueves, más fuerte cuanto más rápido, y un barrido rápido de lado las lanza) y la IZQUIERDA el zoom
+//    (abrir/cerrar pulgar e índice, como en un trackpad, acerca o aleja el busto y las nubes).
 //  · Modo noche (prop `night`, que decide BustPage): fondo oscuro, luz de luna con contraluz azul en el busto y nubes
 //    iluminadas por la luna; la luz pasa de día a noche con un fundido.
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
@@ -50,19 +50,19 @@ const HEAD_GAIN = 1; // 1 = el busto gira lo mismo que la cabeza
 const HEAD_SMOOTH = 0.5; // suavizado de la medición (0..1; más alto = más directo)
 const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 
-// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano las nubes se aceleran de golpe hacia
+// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano derecha las nubes se aceleran de golpe hacia
 // donde se mueve la mano (arriba, abajo, izquierda o derecha) y, cuanto más rápido la mueves, más. Al perder la mano
 // se calman solas.
 const WIND_MAX = 30;
 const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
-// Zoom de pellizco, como en un trackpad: abrir pulgar e índice acerca; cerrarlos aleja. Solo cuenta si es un gesto
+// Mano izquierda — zoom de pellizco, como en un trackpad: abrir pulgar e índice acerca; cerrarlos aleja. Solo cuenta si es un gesto
 // rápido (más lento es relajar la mano para volver a empezar) y si la palma está casi quieta.
 const ZOOM_MIN = 0.85;
 const ZOOM_MAX = 2.5;
 const PINCH_RATE = 0.8; // variación de ln(separación) por segundo por debajo de la cual no se hace zoom
 const PINCH_GAIN = 0.7; // ln(zoom) por cada ln de separación que sobrepasa el umbral
 const PINCH_PALM_MAX = 4; // largos de mano por segundo: si la palma va más rápido es un barrido, no un pellizco
-// Barrido: un golpe de mano rápido y de lado lanza las nubes en ese sentido; el lanzamiento se apaga solo (aunque la
+// Mano derecha — viento y barrido: un golpe de mano rápido y de lado lanza las nubes en ese sentido; el lanzamiento se apaga solo (aunque la
 // mano ya haya salido de la imagen). Fuerza en unidades de viento (1 = la brisa de siempre).
 const SWEEP_MIN = 3.5; // largos de mano por segundo: por debajo no es un barrido
 const SWEEP_MAX = 14; // a esta velocidad el lanzamiento es el máximo
@@ -167,12 +167,29 @@ function LiveBust({ night }: { night: boolean }) {
     };
   };
 
-  const onHand = (m: HandMotion | null) => {
+  // Mano derecha: el viento (dirección, fuerza y barrido). Mano izquierda: el zoom de pellizco.
+  const onHand = (side: HandSide, m: HandMotion | null) => {
+    if (side === "left") {
+      const z = zoomT.current;
+      if (!m) {
+        z.lnd = null; // el zoom se queda como está; al volver la mano se empieza a medir de nuevo
+        return;
+      }
+      // Zoom de pellizco: cambio rápido de la separación entre pulgar e índice, con la palma casi quieta.
+      const lnd = Math.log(clamp(m.pinch, 0.06, 2));
+      const before = z.lnd ?? lnd;
+      z.lnd = before + (lnd - before) * 0.6;
+      const rate = (z.lnd - before) / Math.max(m.dt, 0.01);
+      if (m.speed < PINCH_PALM_MAX && Math.abs(rate) > PINCH_RATE) {
+        z.ln = clamp(z.ln + Math.sign(rate) * (Math.abs(rate) - PINCH_RATE) * m.dt * PINCH_GAIN, Math.log(ZOOM_MIN), Math.log(ZOOM_MAX));
+      }
+      return;
+    }
+
     const d = handDir.current;
     if (!m) {
       hand.current = 0;
       Object.assign(d, { vx: 0, vy: 0, x: 1, y: 0 });
-      zoomT.current.lnd = null; // el zoom se queda como está; al volver la mano se empieza a medir de nuevo
       return;
     }
     hand.current = HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1);
@@ -190,15 +207,6 @@ function LiveBust({ night }: { night: boolean }) {
     if (adx > SWEEP_MIN && adx > 1.5 * ady) {
       const target = Math.sign(d.vx) * (FLING_MIN + (FLING_MAX - FLING_MIN) * clamp((adx - SWEEP_MIN) / (SWEEP_MAX - SWEEP_MIN), 0, 1));
       if (Math.sign(fling.current) !== Math.sign(target) || Math.abs(target) > Math.abs(fling.current)) fling.current = target;
-    }
-
-    // Zoom de pellizco: cambio rápido de la separación entre pulgar e índice, con la palma casi quieta.
-    const z = zoomT.current, lnd = Math.log(clamp(m.pinch, 0.06, 2));
-    const before = z.lnd ?? lnd;
-    z.lnd = before + (lnd - before) * 0.6;
-    const rate = (z.lnd - before) / Math.max(m.dt, 0.01);
-    if (m.speed < PINCH_PALM_MAX && Math.abs(rate) > PINCH_RATE) {
-      z.ln = clamp(z.ln + Math.sign(rate) * (Math.abs(rate) - PINCH_RATE) * m.dt * PINCH_GAIN, Math.log(ZOOM_MIN), Math.log(ZOOM_MAX));
     }
   };
 
@@ -709,7 +717,7 @@ function LiveBust({ night }: { night: boolean }) {
           {/* El espejo existe siempre (oculto) para poder colocar la imagen de la cámara en cuanto llega. */}
           <div hidden={!camOn} className={`w-[clamp(150px,18vw,240px)] overflow-hidden rounded-3xl border ${night ? "border-white/15" : "border-white/60"} bg-ink shadow-[0_12px_40px_rgb(11_11_13/0.18)] max-sm:w-[132px]`}>
             <div ref={mirrorVideo} aria-hidden className="relative aspect-[4/3] w-full [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:-scale-x-100 [&>video]:object-cover" />
-            {/* Viento que levanta tu mano */}
+            {/* Viento que levanta tu mano derecha */}
             <div aria-hidden className="flex items-center gap-2 bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cloud/80">
               Viento
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-cloud/20">
@@ -733,7 +741,7 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes siguen a tu mano: se van hacia donde la mueves, y un barrido rápido de lado las lanza. Abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y mano derecha: las nubes se van hacia donde la mueves, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
@@ -747,7 +755,7 @@ function LiveBust({ night }: { night: boolean }) {
                 <CameraIcon pulse={cam === "asking"} />
               </button>
               <p className={`max-w-[16rem] text-right text-xs ${note}`}>
-                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Se sigue el movimiento de la cabeza y de la mano (y la apertura de pulgar e índice para el zoom), no las expresiones; la imagen se procesa en tu dispositivo y no se guarda."}
+                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Se sigue el movimiento de la cabeza y de la mano (y la apertura de pulgar e índice de la mano izquierda para el zoom), no las expresiones; la imagen se procesa en tu dispositivo y no se guarda."}
               </p>
             </>
           )}

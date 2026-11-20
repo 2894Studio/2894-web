@@ -84,11 +84,17 @@ function eulerYXZ(d: number[]) {
 // movimiento. `pinch`: separación entre la punta del pulgar y la del índice, en largos de mano (para el zoom de pellizco,
 // como en un trackpad); `dt`: segundos entre esta medición y la anterior.
 export type HandMotion = { speed: number; vx: number; vy: number; pinch: number; dt: number };
+// Mano de la persona (no de la imagen).
+export type HandSide = "left" | "right";
+// El modelo de manos da por hecha una imagen en espejo (cámara frontal volteada) y etiqueta "Left"/"Right" para eso. Aquí el
+// vídeo llega sin voltear, así que las etiquetas van al revés. Si con una sola mano a la vista se cambian los papeles de
+// las dos, poner esto en `true`.
+const HANDEDNESS_MIRRORED = false;
 const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
 // `onHand` (opcional): mide también el movimiento de la mano con la misma cámara. Si ese modelo no carga, el seguimiento
 // de la cabeza sigue funcionando igual.
-export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () => void, onHand?: (m: HandMotion | null) => void): Promise<FaceTracker> {
+export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () => void, onHand?: (side: HandSide, m: HandMotion | null) => void): Promise<FaceTracker> {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("sin-camara");
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
   const stopStream = () => stream.getTracks().forEach((t) => t.stop());
@@ -105,7 +111,7 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
       });
     const landmarker = await make("GPU").catch(() => make("CPU")); // sin GPU disponible, en CPU
     const makeHands = (delegate: "GPU" | "CPU") =>
-      HandLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: "VIDEO", numHands: 1 });
+      HandLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: "VIDEO", numHands: 2 });
     const hands = onHand ? await makeHands("GPU").catch(() => makeHands("CPU")).catch(() => null) : null;
     const video = document.createElement("video");
     video.muted = true;
@@ -113,29 +119,50 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
     video.srcObject = stream;
     await video.play();
 
-    // Mano: se mide cada dos cuadros; la velocidad sale del recorrido del centro de la palma entre mediciones.
-    let frame = 0, lostHand = 0, prev: { x: number; y: number; t: number } | null = null;
+    // Manos: se miden cada dos cuadros; la velocidad sale del recorrido del centro de la palma entre mediciones. Cada mano
+    // se sigue por separado: la izquierda y la derecha de la persona (no de la imagen).
+    let frame = 0;
+    const SIDES: HandSide[] = ["left", "right"];
+    const lost: Record<HandSide, number> = { left: 0, right: 0 };
+    const prev: Record<HandSide, { x: number; y: number; t: number } | null> = { left: null, right: null };
     const PALM = [0, 5, 9, 13, 17]; // muñeca y base de los cuatro dedos
-    const trackHand = () => {
-      const lm = hands!.detectForVideo(video, performance.now()).landmarks?.[0];
-      if (!lm) {
-        prev = null;
-        if (++lostHand === 3) onHand!(null);
-        return;
+    const palmX = (lm: { x: number }[]) => PALM.reduce((a, i) => a + lm[i].x, 0) / PALM.length;
+    const trackHands = () => {
+      const res = hands!.detectForVideo(video, performance.now());
+      const lms = res.landmarks ?? [];
+      const found: Partial<Record<HandSide, (typeof lms)[number]>> = {};
+      if (lms.length >= 2) {
+        // Con dos manos manda la posición: en la imagen sin espejo, la mano izquierda de la persona queda a la derecha.
+        const [a, b] = palmX(lms[0]) > palmX(lms[1]) ? [lms[0], lms[1]] : [lms[1], lms[0]];
+        found.left = a;
+        found.right = b;
+      } else if (lms.length === 1) {
+        // Con una sola, la etiqueta del modelo, que da por hecha una imagen en espejo; la nuestra no lo está, así que se invierte.
+        const label = res.handedness?.[0]?.[0]?.categoryName;
+        const isLeft = HANDEDNESS_MIRRORED ? label === "Left" : label === "Right";
+        found[isLeft ? "left" : "right"] = lms[0];
       }
-      lostHand = 0;
-      const W = video.videoWidth, H = video.videoHeight;
-      const x = (PALM.reduce((a, i) => a + lm[i].x, 0) / PALM.length) * W;
-      const y = (PALM.reduce((a, i) => a + lm[i].y, 0) / PALM.length) * H;
-      const size = Math.hypot((lm[9].x - lm[0].x) * W, (lm[9].y - lm[0].y) * H) || 1; // muñeca → base del dedo corazón
-      const t = video.currentTime;
-      if (prev && t > prev.t) {
-        const dt = t - prev.t;
-        // La imagen de la cámara no va en espejo, pero la persona se ve en espejo: el eje horizontal cambia de signo.
-        const pinch = Math.hypot((lm[4].x - lm[8].x) * W, (lm[4].y - lm[8].y) * H) / size; // puntas del pulgar (4) y el índice (8)
-        onHand!({ speed: Math.hypot(x - prev.x, y - prev.y) / size / dt, vx: -(x - prev.x) / size / dt, vy: (y - prev.y) / size / dt, pinch, dt });
+      const W = video.videoWidth, H = video.videoHeight, t = video.currentTime;
+      for (const side of SIDES) {
+        const lm = found[side];
+        if (!lm) {
+          prev[side] = null;
+          if (++lost[side] === 3) onHand!(side, null);
+          continue;
+        }
+        lost[side] = 0;
+        const x = palmX(lm) * W;
+        const y = (PALM.reduce((a, i) => a + lm[i].y, 0) / PALM.length) * H;
+        const size = Math.hypot((lm[9].x - lm[0].x) * W, (lm[9].y - lm[0].y) * H) || 1; // muñeca → base del dedo corazón
+        const p = prev[side];
+        if (p && t > p.t) {
+          const dt = t - p.t;
+          // La imagen de la cámara no va en espejo, pero la persona se ve en espejo: el eje horizontal cambia de signo.
+          const pinch = Math.hypot((lm[4].x - lm[8].x) * W, (lm[4].y - lm[8].y) * H) / size; // puntas del pulgar (4) y el índice (8)
+          onHand!(side, { speed: Math.hypot(x - p.x, y - p.y) / size / dt, vx: -(x - p.x) / size / dt, vy: (y - p.y) / size / dt, pinch, dt });
+        }
+        prev[side] = { x, y, t };
       }
-      prev = { x, y, t };
     };
 
     let raf = 0, stopped = false, last = -1, missed = 0;
@@ -144,7 +171,7 @@ export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () =>
       raf = requestAnimationFrame(loop);
       if (video.currentTime === last || video.readyState < 2) return;
       last = video.currentTime;
-      if (hands && (frame++ & 1) === 0) trackHand();
+      if (hands && (frame++ & 1) === 0) trackHands();
       const res = landmarker.detectForVideo(video, performance.now());
       const m = res.facialTransformationMatrixes?.[0]?.data;
       const lm = res.faceLandmarks?.[0];
