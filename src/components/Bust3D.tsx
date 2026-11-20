@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useRef, useState } from "react";
+import { CloudSky } from "@/components/CloudSky";
 import { startHeadPose, type FaceTracker, type HeadPose } from "@/lib/faceTracking";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 
@@ -10,6 +11,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //    arriba y abajo) con inercia. Flechas del teclado para girarlo, doble clic o "Volver al frente" para recolocarlo.
 //  · Cámara (opcional): el busto repite el movimiento de la cabeza de la persona en los tres ejes (giro, cabeceo e
 //    inclinación). Solo movimiento: no se leen gestos ni expresiones.
+//  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
+//    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado.
 // three.js se carga desde un CDN en el navegador (igual que MediaPipe en faceTracking.ts), así que no añade
 // dependencias al proyecto. Mientras el modelo carga —o si WebGL/la descarga fallan— se ve el busto 2D de siempre.
 const THREE_URL = "https://esm.sh/three@0.170.0";
@@ -76,6 +79,13 @@ function LiveBust() {
   const [progress, setProgress] = useState<number | null>(0); // % de descarga del GLB (null: sin estado que mostrar)
   const [hint, setHint] = useState(true);
   const [away, setAway] = useState(false); // el busto no está de frente: se ofrece volver
+  const [skies, setSkies] = useState(false); // nubes de fondo: se montan al cargar el busto (o a los 3 s, si este falla)
+
+  useEffect(() => {
+    if (ready) return setSkies(true);
+    const t = window.setTimeout(() => setSkies(true), 3000);
+    return () => window.clearTimeout(t);
+  }, [ready]);
 
   // Cada medición de la cámara: suavizado, postura neutra y paso a los ejes del busto.
   const onPose = (p: HeadPose) => {
@@ -448,6 +458,11 @@ function LiveBust() {
   return (
     <section aria-label="2894_ Studio, una nueva forma de diseñar" className="relative h-svh">
       <div ref={stage} className="relative h-svh overflow-hidden bg-cloud">
+        {/* Nubes de Grow, sin cielo: detrás de todo lo demás */}
+        <div aria-hidden className={`absolute inset-0 transition-opacity duration-[1400ms] ${skies ? "opacity-100" : "opacity-0"}`}>
+          {skies && <CloudSky />}
+        </div>
+
         {/* Busto 2D: se ve mientras carga el 3D y si este falla */}
         <div ref={placeholder} className={`absolute transition-opacity duration-700 ${ready ? "opacity-0" : "opacity-100"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
