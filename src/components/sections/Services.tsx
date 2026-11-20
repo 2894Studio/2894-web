@@ -62,7 +62,9 @@ export function Services({ images }: { images: ApplyImage[] }) {
   const skyControls = useRef<SkyControls>({ ...SKY_DEFAULTS });
   const [ctrl, setCtrl] = useState<SkyControls>({ ...SKY_DEFAULTS });
   const [skyKey, setSkyKey] = useState(SKIES[0].key);
-  const [panelOpen, setPanelOpen] = useState(true); // abierto por defecto al llegar a Grow
+  // Abierto por defecto al llegar a Grow en escritorio; en móvil (menos de 640 px) plegado, para dejar el espacio al cielo.
+  // El panel solo se pinta al llegar a Grow (nunca en el HTML inicial), así que leer la pantalla aquí no desajusta la hidratación.
+  const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || !window.matchMedia("(max-width: 639px)").matches);
   const pinST = useRef<ScrollTrigger | null>(null);
   const setControl = (k: keyof SkyControls, v: number) => {
     skyControls.current = { ...skyControls.current, [k]: v };
