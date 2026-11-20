@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
@@ -48,8 +48,26 @@ export function Footer() {
   const router = useRouter();
   const fadeOut = useRef<HTMLDivElement>(null);
   const leaving = useRef(false);
+  // Tooltip del busto: una etiqueta que sigue al cursor (solo con ratón) mientras se pasa por encima.
+  const tip = useRef<HTMLDivElement>(null);
+  const tipTo = useRef<{ x: (v: number) => void; y: (v: number) => void } | null>(null);
+  const [tipOn, setTipOn] = useState(false);
+  useEffect(() => {
+    if (!tip.current) return;
+    tipTo.current = {
+      x: gsap.quickTo(tip.current, "x", { duration: 0.45, ease: "power3.out" }),
+      y: gsap.quickTo(tip.current, "y", { duration: 0.45, ease: "power3.out" }),
+    };
+  }, []);
+  // Junto al cursor; si no cabe a la derecha (el busto está pegado al borde), pasa a la izquierda.
+  const tipPos = (e: ReactPointerEvent) => {
+    const w = tip.current?.offsetWidth ?? 0;
+    const x = e.clientX + 18 + w > window.innerWidth - 8 ? e.clientX - 18 - w : e.clientX + 18;
+    return { x, y: e.clientY + 18 };
+  };
   // Clic en el busto: los puntos salen despedidos, la pantalla se funde a blanco y se abre la página del busto.
   const openBust = () => {
+    setTipOn(false);
     if (leaving.current) return;
     try {
       sessionStorage.setItem("bust-from", "home"); // para que "Volver" regrese aquí mismo
@@ -115,6 +133,19 @@ export function Footer() {
           type="button"
           data-bust
           onClick={openBust}
+          onPointerEnter={(e) => {
+            if (e.pointerType !== "mouse") return;
+            const p = tipPos(e);
+            gsap.set(tip.current, p); // aparece ya junto al cursor, sin cruzar la pantalla
+            setTipOn(true);
+          }}
+          onPointerMove={(e) => {
+            if (e.pointerType !== "mouse") return;
+            const p = tipPos(e);
+            tipTo.current?.x(p.x);
+            tipTo.current?.y(p.y);
+          }}
+          onPointerLeave={() => setTipOn(false)}
           aria-label="Abrir el busto de 2894_"
           className="absolute inset-y-0 right-0 block max-w-full cursor-pointer opacity-[0.16] transition-opacity duration-500 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:right-[var(--gutter)] md:max-w-[48vw] md:opacity-[0.34] md:hover:opacity-80"
           style={{ aspectRatio: BUST_ASPECT }}
@@ -122,6 +153,13 @@ export function Footer() {
           <HalftoneBust className="h-full w-full" burstRef={burst} />
         </button>
         <div ref={fadeOut} aria-hidden className="fade-to-cloud fixed inset-0 z-[60] hidden bg-cloud" />
+        <div
+          ref={tip}
+          aria-hidden
+          className={`pointer-events-none fixed left-0 top-0 z-[55] hidden transition-opacity duration-300 [@media(hover:hover)_and_(pointer:fine)]:block ${tipOn ? "opacity-100" : "opacity-0"}`}
+        >
+          <span className="block whitespace-nowrap rounded-full bg-cloud px-4 py-2 text-sm font-medium text-cobalt">¿Quieres saber qué hay al otro lado?</span>
+        </div>
 
         <h2 data-head className="pointer-events-none relative z-10 text-[clamp(2.6rem,9vw,8rem)] font-light uppercase leading-none tracking-[-0.04em]">
           <span className="sr-only">Contacto</span>
