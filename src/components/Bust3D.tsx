@@ -13,8 +13,8 @@ import { useReducedMotion } from "@/lib/useReducedMotion";
 //    inclinación). Solo movimiento: no se leen gestos ni expresiones.
 //  · Nubes: las nubes volumétricas de Grow (CloudSky, solo las nubes, sin el cielo azul) flotan detrás del busto y
 //    reaccionan al cursor; entran con un fundido cuando el busto ya ha cargado. Hay muchas más nubes de las que caben en
-//    pantalla (reserva fuera de la vista). Con la cámara activa, cada mano hace lo suyo: la DERECHA es el viento (las nubes
-//    soplan hacia donde la mueves, más fuerte cuanto más rápido, y un barrido rápido de lado las lanza) y la IZQUIERDA el zoom
+//    pantalla (reserva fuera de la vista). Con la cámara activa, cada mano hace lo suyo: la DERECHA arrastra las nubes (se
+//    mueven con la mano, en su dirección y a su velocidad, y un barrido rápido de lado las lanza) y la IZQUIERDA el zoom
 //    (abrir/cerrar pulgar e índice, como en un trackpad, acerca o aleja el busto y las nubes).
 //  · Modo noche (prop `night`, que decide BustPage): fondo oscuro, luz de luna con contraluz azul en el busto y nubes
 //    iluminadas por la luna; la luz pasa de día a noche con un fundido.
@@ -50,11 +50,15 @@ const HEAD_GAIN = 1; // 1 = el busto gira lo mismo que la cabeza
 const HEAD_SMOOTH = 0.5; // suavizado de la medición (0..1; más alto = más directo)
 const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 
-// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano derecha las nubes se aceleran de golpe hacia
-// donde se mueve la mano (arriba, abajo, izquierda o derecha) y, cuanto más rápido la mueves, más. Al perder la mano
-// se calman solas.
-const WIND_MAX = 30;
-const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
+// Mano derecha — arrastre: las nubes se mueven con la mano, como si empujaras el aire. Su velocidad es proporcional a la de
+// la mano y en su misma dirección (arriba, abajo, izquierda o derecha); con la mano quieta o fuera de la imagen vuelven
+// a su brisa, con un poco de inercia. Grow va de 0 a 4 (1 por defecto); aquí el viento se mide en esas mismas unidades.
+const DRAG_GAIN = 20; // unidades de viento por cada largo de mano por segundo (≈ 0,6 de cielo por segundo)
+const DRAG_DEAD = 0.5; // largos de mano por segundo: por debajo es temblor y no mueve nada
+const DRAG_MAX = 90; // tope del viento por arrastre
+const WIND_BAR = 100; // viento que llena la barra «Viento»
+const DRAG_FOLLOW = 10; // 1/s: con la mano moviéndose, las nubes la siguen casi pegadas
+const DRAG_INERTIA = 2.2; // 1/s: al soltar o quedarse quieta, las nubes se frenan en ~0,5 s
 // Mano izquierda — zoom de pellizco, como en un trackpad: abrir pulgar e índice acerca; cerrarlos aleja. Solo cuenta si es un gesto
 // rápido (más lento es relajar la mano para volver a empezar) y si la palma está casi quieta.
 const ZOOM_MIN = 0.65;
@@ -62,7 +66,7 @@ const ZOOM_MAX = 5;
 const PINCH_RATE = 0.8; // variación de ln(separación) por segundo por debajo de la cual no se hace zoom
 const PINCH_GAIN = 0.7; // ln(zoom) por cada ln de separación que sobrepasa el umbral
 const PINCH_PALM_MAX = 4; // largos de mano por segundo: si la palma va más rápido es un barrido, no un pellizco
-// Mano derecha — viento y barrido: un golpe de mano rápido y de lado lanza las nubes en ese sentido; el lanzamiento se apaga solo (aunque la
+// Mano derecha — barrido: un golpe de mano rápido y de lado lanza las nubes en ese sentido; el lanzamiento se apaga solo (aunque la
 // mano ya haya salido de la imagen). Fuerza en unidades de viento (1 = la brisa de siempre).
 const SWEEP_MIN = 3.5; // largos de mano por segundo: por debajo no es un barrido
 const SWEEP_MAX = 14; // a esta velocidad el lanzamiento es el máximo
@@ -70,8 +74,6 @@ const FLING_MIN = 25;
 const FLING_MAX = 110;
 const FLING_TAU = 1.6; // s que tarda en apagarse (~63 %)
 const HAND_DIR_SMOOTH = 0.4; // suavizado de la dirección de la mano (0..1; más alto = más directo)
-const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no suma
-const HAND_MAX = 10; // a esta velocidad (un saludo enérgico) el viento llega al máximo
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -107,7 +109,7 @@ function LiveBust({ night }: { night: boolean }) {
   const mirrorVideo = useRef<HTMLDivElement>(null);
   const sky = useRef<SkyControls>({ ...SKY_DEFAULTS, count: 16, dirX: 1, dirY: 0 }); // controles de las nubes (fuerza y dirección del viento: la mano)
   const windVec = useRef({ x: 1, y: 0 }); // viento actual (x a la derecha, y hacia arriba); en reposo, la brisa de siempre
-  const handDir = useRef({ vx: 0, vy: 0, x: 1, y: 0 }); // movimiento de la mano suavizado y su última dirección clara
+  const handDir = useRef({ vx: 0, vy: 0 }); // velocidad de la mano derecha suavizada (largos de mano/s; y hacia arriba)
   const fling = useRef(0); // lanzamiento horizontal del último barrido (viento extra, con signo: + = derecha)
   const zoomT = useRef({ ln: 0, cur: 0, lnd: null as number | null }); // ln(zoom): objetivo y valor suavizado; ln de la separación pulgar-índice
   const zoomBar = useRef<HTMLDivElement>(null);
@@ -189,18 +191,13 @@ function LiveBust({ night }: { night: boolean }) {
     const d = handDir.current;
     if (!m) {
       hand.current = 0;
-      Object.assign(d, { vx: 0, vy: 0, x: 1, y: 0 });
+      Object.assign(d, { vx: 0, vy: 0 });
       return;
     }
-    hand.current = HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1);
-    // Dirección del movimiento (suavizada): derecha/izquierda como en el espejo; arriba/abajo, con la y del cielo hacia arriba.
+    hand.current = 1;
+    // Velocidad de la mano (suavizada): derecha/izquierda como en el espejo; arriba/abajo, con la y del cielo hacia arriba.
     d.vx += (m.vx - d.vx) * HAND_DIR_SMOOTH;
     d.vy += (-m.vy - d.vy) * HAND_DIR_SMOOTH;
-    const sp = Math.hypot(d.vx, d.vy);
-    if (sp > HAND_MIN) {
-      d.x = d.vx / sp;
-      d.y = d.vy / sp;
-    } // más lento que eso la dirección no es fiable: se mantiene la última
 
     // Barrido: movimiento rápido y sobre todo horizontal.
     const adx = Math.abs(d.vx), ady = Math.abs(d.vy);
@@ -229,7 +226,7 @@ function LiveBust({ night }: { night: boolean }) {
     head.current = { active: false, yaw: 0, pitch: 0, roll: 0 };
     cal.current = newCal();
     hand.current = 0;
-    Object.assign(handDir.current, { vx: 0, vy: 0, x: 1, y: 0 });
+    Object.assign(handDir.current, { vx: 0, vy: 0 });
     zoomT.current.lnd = null;
     setCam("off");
   };
@@ -262,10 +259,22 @@ function LiveBust({ night }: { night: boolean }) {
         hand.current = 0;
         z.ln = 0;
       }
-      const lvl = hand.current, d = handDir.current, v = windVec.current;
-      const mag = 1 + lvl * (WIND_MAX - 1);
-      const tx = lvl > 0 ? d.x * mag : 1, ty = lvl > 0 ? d.y * mag : 0;
-      const k = 1 - Math.exp(-(lvl > 0 ? 7 : 1.1) * dt);
+      const d = handDir.current, v = windVec.current;
+      // Arrastre: viento proporcional a la velocidad de la mano (menos el temblor), en su dirección. Sin mano, brisa.
+      const sp = Math.hypot(d.vx, d.vy);
+      let gx = 0, gy = 0;
+      if (hand.current > 0 && sp > DRAG_DEAD) {
+        const f = ((sp - DRAG_DEAD) / sp) * DRAG_GAIN;
+        gx = d.vx * f;
+        gy = d.vy * f;
+        const gm = Math.hypot(gx, gy);
+        if (gm > DRAG_MAX) {
+          gx *= DRAG_MAX / gm;
+          gy *= DRAG_MAX / gm;
+        }
+      }
+      const tx = 1 + gx, ty = gy;
+      const k = 1 - Math.exp(-(gx || gy ? DRAG_FOLLOW : DRAG_INERTIA) * dt);
       v.x += (tx - v.x) * k;
       v.y += (ty - v.y) * k;
       fling.current *= Math.exp(-dt / FLING_TAU);
@@ -276,7 +285,7 @@ function LiveBust({ night }: { night: boolean }) {
         c.dirX = wx / m;
         c.dirY = v.y / m;
       }
-      if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((m - 1) / (WIND_MAX - 1), 0, 1)})`;
+      if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((m - 1) / (WIND_BAR - 1), 0, 1)})`;
 
       // Zoom: el busto y las nubes se acercan o alejan a la vez.
       z.cur += (z.ln - z.cur) * (1 - Math.exp(-8 * dt));
@@ -741,7 +750,7 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y mano derecha: las nubes se van hacia donde la mueves, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y mano derecha: arrastra las nubes con ella, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
