@@ -17,22 +17,6 @@ export function ProjectSlider({ items, mediaRef, fill = false }: { items: Sphere
   const slides = useRef<(HTMLLIElement | null)[]>([]);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState<SphereItem | null>(null);
-  const [more, setMore] = useState(false); // hay texto por leer más abajo (solo con `fill`)
-
-  // ¿Queda texto escondido bajo el borde inferior? Se recalcula al desplazar, al cambiar de diapositiva y al redimensionar.
-  useEffect(() => {
-    const ul = scroller.current;
-    if (!ul || !fill) return;
-    const check = () => setMore(ul.scrollHeight - ul.scrollTop - ul.clientHeight > 12);
-    check();
-    ul.addEventListener("scroll", check, { passive: true });
-    const ro = new ResizeObserver(check);
-    ro.observe(ul);
-    return () => {
-      ul.removeEventListener("scroll", check);
-      ro.disconnect();
-    };
-  }, [fill, current]);
 
   // Diapositiva activa = la que ocupa más pantalla.
   useEffect(() => {
@@ -106,12 +90,6 @@ export function ProjectSlider({ items, mediaRef, fill = false }: { items: Sphere
           );
         })}
       </ul>
-
-      {fill && (
-        <div aria-hidden className={`pointer-events-none -mt-10 mb-2 flex h-8 shrink-0 justify-end px-[10vw] transition-opacity duration-300 ${more ? "opacity-100" : "opacity-0"}`}>
-          <span className="rounded-full bg-ink px-4 py-1.5 text-sm text-cloud">Sigue leyendo ↓</span>
-        </div>
-      )}
 
       {/* Contador y flechas (zonas táctiles de 44 px) */}
       <div className={`mt-1 flex shrink-0 items-center justify-between px-[10vw] ${fill ? "mb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]" : ""}`}>
