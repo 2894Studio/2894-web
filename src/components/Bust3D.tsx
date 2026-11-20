@@ -57,8 +57,8 @@ const WIND_MAX = 30;
 const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
 // Mano izquierda — zoom de pellizco, como en un trackpad: abrir pulgar e índice acerca; cerrarlos aleja. Solo cuenta si es un gesto
 // rápido (más lento es relajar la mano para volver a empezar) y si la palma está casi quieta.
-const ZOOM_MIN = 0.85;
-const ZOOM_MAX = 2.5;
+const ZOOM_MIN = 0.65;
+const ZOOM_MAX = 5;
 const PINCH_RATE = 0.8; // variación de ln(separación) por segundo por debajo de la cual no se hace zoom
 const PINCH_GAIN = 0.7; // ln(zoom) por cada ln de separación que sobrepasa el umbral
 const PINCH_PALM_MAX = 4; // largos de mano por segundo: si la palma va más rápido es un barrido, no un pellizco
@@ -728,7 +728,7 @@ function LiveBust({ night }: { night: boolean }) {
             <div aria-hidden className="flex items-center gap-2 bg-ink px-3 pb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cloud/80">
               Zoom
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-cloud/20">
-                <span ref={zoomBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0.15)" }} />
+                <span ref={zoomBar} className="block h-full origin-left rounded-full bg-sky" style={{ transform: "scaleX(0.21)" }} />
               </span>
             </div>
             <div className={`grid grid-cols-2 ${night ? "bg-white/10" : "bg-white/90"}`}>

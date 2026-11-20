@@ -18,10 +18,10 @@ const COUNT = 7; // nubes del cielo de Grow
 // Modo con reserva (`reserve`): hay muchas más nubes de las que caben en pantalla, repartidas por un "toro" bastante
 // mayor que la vista (se envuelve por los cuatro lados). El viento las empuja en cualquier dirección y, como siempre
 // hay nubes esperando fuera de la vista, nunca se vacía el cielo. Solo se pintan las que pisan la vista (máx. RESERVE_SLOTS).
-const RESERVE_SLOTS = 18;
-const POOL_SIZE = 28;
-const PX = 16; // ancho del toro (x ∈ ±8): más que la vista más ancha (con zoom-out incluido) más media nube
-const PY = 12; // alto del toro (alrededor de la altura de la cámara)
+const RESERVE_SLOTS = 20;
+const POOL_SIZE = 44;
+const PX = 20; // ancho del toro (x ∈ ±10): más que la vista más ancha (con el zoom-out máximo) más media nube
+const PY = 16; // alto del toro (alrededor de la altura de la cámara)
 
 const makeFrag = (COUNT: number) => `#version 300 es
 precision highp float;
