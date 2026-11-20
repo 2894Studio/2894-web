@@ -48,9 +48,11 @@ const HEAD_GAIN = 1; // 1 = el busto gira lo mismo que la cabeza
 const HEAD_SMOOTH = 0.5; // suavizado de la medición (0..1; más alto = más directo)
 const HEAD_LIMIT = { yaw: 1.75, pitch: 1.2, roll: 0.8 }; // rad
 
-// Viento: Grow va de 0 a 4 (1 por defecto); aquí la ráfaga de la mano puede subir más, y se calma sola.
-const WIND_MAX = 8;
-const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no cuenta
+// Viento: Grow va de 0 a 4 (1 por defecto); aquí, en cuanto se reconoce la mano las nubes se aceleran de golpe y,
+// si la mano se mueve, aún más. Al perder la mano se calman solas.
+const WIND_MAX = 30;
+const HAND_PRESENT = 0.4; // fracción del viento máximo que da solo ver la mano (≈ 12× el normal), quieta o no
+const HAND_MIN = 1.5; // largos de mano por segundo: por debajo es temblor o un gesto lento y no suma
 const HAND_MAX = 10; // a esta velocidad (un saludo enérgico) el viento llega al máximo
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -143,7 +145,7 @@ function LiveBust({ night }: { night: boolean }) {
   };
 
   const onHand = (m: HandMotion | null) => {
-    hand.current = m ? clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1) : 0;
+    hand.current = m ? HAND_PRESENT + (1 - HAND_PRESENT) * clamp((m.speed - HAND_MIN) / (HAND_MAX - HAND_MIN), 0, 1) : 0;
   };
 
   // Cámara opcional: solo si la persona la activa. La imagen se procesa en el dispositivo y no se guarda.
@@ -185,7 +187,7 @@ function LiveBust({ night }: { night: boolean }) {
       last = now;
       if (!camOn) hand.current = 0;
       const w = sky.current.wind, target = 1 + hand.current * (WIND_MAX - 1);
-      sky.current.wind = w + (target - w) * (1 - Math.exp(-(target > w ? 6 : 0.9) * dt));
+      sky.current.wind = w + (target - w) * (1 - Math.exp(-(target > w ? 8 : 1.1) * dt));
       if (windBar.current) windBar.current.style.transform = `scaleX(${clamp((sky.current.wind - 1) / (WIND_MAX - 1), 0, 1)})`;
       if (!camOn && Math.abs(sky.current.wind - 1) < 0.01) {
         sky.current.wind = 1;
@@ -621,16 +623,18 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y el viento de las nubes sube con el de tu mano: sacúdela delante de la cámara. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y las nubes se aceleran en cuanto te ven la mano, y aún más si la sacudes. «Centrar» fija tu postura actual como el frente.</p>
           ) : (
             <>
               <button
                 type="button"
                 onClick={startCam}
                 disabled={cam === "asking"}
-                className={`spring inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium backdrop-blur-md disabled:opacity-60 ${pill}`}
+                aria-label={cam === "asking" ? "Activando la cámara…" : "Activar la cámara: mueve el busto con tu cabeza y las nubes con tu mano"}
+                title={cam === "asking" ? "Activando la cámara…" : "Activar la cámara"}
+                className={`spring inline-flex size-12 items-center justify-center rounded-full border backdrop-blur-md disabled:opacity-60 ${pill}`}
               >
-                {cam === "asking" ? "Activando la cámara…" : "Cámara: mueve el busto y las nubes"}
+                <CameraIcon pulse={cam === "asking"} />
               </button>
               <p className={`max-w-[16rem] text-right text-xs ${note}`}>
                 {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Solo se sigue el movimiento de la cabeza y de la mano, no los gestos; la imagen se procesa en tu dispositivo y no se guarda."}
@@ -640,6 +644,15 @@ function LiveBust({ night }: { night: boolean }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function CameraIcon({ pulse }: { pulse: boolean }) {
+  return (
+    <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={pulse ? "animate-pulse" : ""}>
+      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7a1.5 1.5 0 0 0 1.2-.6l.9-1.2A1.5 1.5 0 0 1 10.5 3.5h3a1.5 1.5 0 0 1 1.2.7l.9 1.2a1.5 1.5 0 0 0 1.2.6h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z" />
+      <circle cx="12" cy="13" r="3.6" />
+    </svg>
   );
 }
 

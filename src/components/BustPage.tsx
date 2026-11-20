@@ -10,11 +10,11 @@ const NIGHT_BG = "#070a14"; // fondo del modo noche (el mismo que el del escenar
 
 // Página del busto (easter egg): el busto en 3D centrado, que sigue al ratón (o a la cámara, si se activa).
 // Volver es fácil: botón visible arriba a la izquierda (recibe el foco al entrar), tecla Esc y el "atrás" del navegador.
-// Modo noche: interruptor arriba a la derecha. Arranca según el tema del sistema y recuerda la elección de la persona.
+// Modo noche: es el modo por defecto; el interruptor arriba a la derecha pasa a día y recuerda la elección de la persona.
 export function BustPage() {
   const router = useRouter();
   const back = useRef<HTMLAnchorElement>(null);
-  const [night, setNight] = useState(false);
+  const [night, setNight] = useState(true); // oscuro por defecto
 
   const goBack = (e?: { preventDefault: () => void }): boolean => {
     let fromHome = false;
@@ -44,21 +44,11 @@ export function BustPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Modo noche: la elección guardada manda; si no hay, el tema del sistema (y lo sigue mientras no se elija).
+  // Modo noche por defecto: solo pasa a día si la persona lo eligió así antes.
   useEffect(() => {
-    let saved: string | null = null;
     try {
-      saved = localStorage.getItem(NIGHT_KEY);
+      if (localStorage.getItem(NIGHT_KEY) === "0") setNight(false);
     } catch {}
-    if (saved === "1" || saved === "0") {
-      setNight(saved === "1");
-      return;
-    }
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setNight(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setNight(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   // Detrás del escenario (rebote del scroll, barra del navegador) también se ve la noche; al salir, todo vuelve a lo suyo.
