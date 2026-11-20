@@ -31,8 +31,8 @@ export default async function Home() {
           {/* Showreel con el cielo por debajo → Proyectos */}
           <Scene><Opening items={items} /></Scene>
           <Scene><Clients media={clientMedia} /></Scene>
-          {/* Apply: la portada de cada proyecto real */}
-          <Scene><Services images={items.filter((i) => i.image).map((i) => ({ src: i.image, alt: i.title }))} /></Scene>
+          {/* Apply: una foto real de cada proyecto (no el fotograma de un vídeo, que puede salir en blanco) */}
+          <Scene><Services images={items.filter((i) => i.still).map((i) => ({ src: i.still!, alt: i.title }))} /></Scene>
         </main>
         <Scene><Footer /></Scene>
       </SceneStack>

@@ -180,6 +180,7 @@ export type SphereItem = {
   title: string;
   category: string;
   image: string; // imagen de portada (o póster del vídeo)
+  still?: string; // primera foto real del proyecto (sin contar fotogramas de vídeo), si la tiene
   frames: string[]; // fotos del proyecto para el pase "como vídeo"
   video?: string; // vídeo que se reproduce al pasar el ratón (proyectos de vídeo)
   review: string;
@@ -195,6 +196,7 @@ export const toSphere = (p: ProjectEntry): SphereItem => {
     title: p.title,
     category: p.category,
     image: p.cover.kind === "image" ? p.cover.src : (p.cover.poster ?? images[0] ?? ""),
+    still: images[0],
     frames: videoProject ? [] : images.slice(0, 24), // proyectos de vídeo: solo el vídeo, sin pase de fotos
     video: videoProject ? (p.cover.kind === "video" ? p.cover.src : firstVideo?.src) : undefined,
     review: p.summary,
