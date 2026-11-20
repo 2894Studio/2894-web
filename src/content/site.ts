@@ -56,8 +56,8 @@ export const services = [
   },
   {
     key: "Grow",
-    text: "Crecimiento y madurez del equipo, visión estratégica y nuevas formas de creación.",
-    items: ["Formaciones", "Asesoramiento en políticas de IA"],
+    text: "Equipos que crecen con la IA: formación, acompañamiento y marco estratégico para sostenerlo.",
+    items: ["Formación en IA", "Workshops", "AI Roadmap", "Políticas de IA"],
   },
 ];
 
