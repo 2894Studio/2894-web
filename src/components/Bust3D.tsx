@@ -750,7 +750,11 @@ function LiveBust({ night }: { night: boolean }) {
             </div>
           </div>
           {camOn ? (
-            <p className={`max-w-[16rem] text-right text-xs ${note}`}>El busto repite el movimiento de tu cabeza y mano derecha: arrastra las nubes con ella, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom. «Centrar» fija tu postura como el frente y devuelve el zoom a 1. «Centrar» fija tu postura actual como el frente.</p>
+            <p className={`max-w-[16rem] text-right text-xs ${note}`}>
+              El busto repite el movimiento de tu cabeza.
+              <br />
+              Tu mano derecha abierta: arrastra las nubes con ella, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom.
+            </p>
           ) : (
             <>
               <button
