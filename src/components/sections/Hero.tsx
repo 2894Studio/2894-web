@@ -151,7 +151,7 @@ export function Hero({ managed = false }: { managed?: boolean }) {
         <div className="absolute inset-0 bg-ink/15" />
         {/* Sin botones sobre el vídeo: un clic en él pausa/reproduce (los controles accesibles están en la barra). */}
         {!reduced && <div aria-hidden onClick={togglePlay} className="absolute inset-0 z-[1]" />}
-        <h1 className="sr-only">2894_ Studio: {studio.headline}</h1>
+        {!managed && <h1 className="sr-only">2894_ Studio: {studio.headline}</h1>}
       </div>
     </header>
   );

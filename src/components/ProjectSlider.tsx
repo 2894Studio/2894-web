@@ -65,7 +65,7 @@ export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaR
                 <CardMedia item={p} index={i} active={i === current} />
               </div>
               <div className="px-1 pt-3">
-                {p.category && <p className="text-xs font-medium uppercase tracking-wide text-ink/70">{p.category}</p>}
+                {p.category && <p className="text-sm text-ink/80">{p.category}</p>}
                 <h3 className="mt-1 text-xl font-light uppercase leading-tight tracking-tight">{p.title}</h3>
                 {p.review && <p className="mt-2 line-clamp-2 text-base leading-snug">{p.review}</p>}
                 {(link || p.clickVideo) && (

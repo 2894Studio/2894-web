@@ -8,6 +8,7 @@ import { Projects } from "@/components/sections/Projects";
 import { getReel, reel as reelCtl, setReel } from "@/lib/reel";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { SphereItem } from "@/lib/projects";
+import { studio } from "@/content/site";
 
 // Apertura: showreel con el cielo de nubes por debajo → Proyectos, en una sola escena guiada por el scroll.
 // "El vídeo es el primer proyecto": el vídeo se encoge sobre el cielo hasta el tamaño de una ficha y vuela a su
@@ -67,7 +68,6 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
           reelCtl.mute();
         }
       } else muteCalled = false;
-      const phone = window.innerWidth < 640;
 
       // 1 · Se enmarca: aparece el cielo alrededor del vídeo.
       const a = smooth(seg(p, 0, 0.12));
@@ -76,20 +76,16 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
 
       if (head && fr) {
         // 2 · El vídeo vuela hasta la ficha del primer proyecto (la sigue aunque la esfera gire).
-        const f = easeInOut(seg(p, phone ? 0.06 : 0.14, 0.5));
+        const f = easeInOut(seg(p, 0.14, 0.5));
         const card = cards.current[0];
         const sr = st.getBoundingClientRect();
         const cr = card?.getBoundingClientRect();
         const tx = cr ? cr.left - sr.left : W / 2, ty = cr ? cr.top - sr.top : H / 2;
         const tw = cr ? cr.width : 0, th = cr ? cr.height : 0;
-        // Escritorio: el vídeo empieza a pantalla completa. Móvil: empieza en horizontal (16:9, ancho completo, sin recortar
-        // la imagen) sobre el cielo y se encoge hasta la primera ficha del carrusel.
-        const sx = phone ? 0 : inset, sy = phone ? (H - (W * 9) / 16) / 2 - H * 0.04 : inset;
-        const sw = phone ? W : W - 2 * inset, sh = phone ? (W * 9) / 16 : H - 2 * inset;
-        const x = lerp(sx, tx, f), y = lerp(sy, ty, f);
-        const w = lerp(sw, tw, f), h = lerp(sh, th, f);
+        const x = lerp(inset, tx, f), y = lerp(inset, ty, f);
+        const w = lerp(W - 2 * inset, tw, f), h = lerp(H - 2 * inset, th, f);
         Object.assign(head.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto", padding: "0" });
-        fr.style.borderRadius = `${lerp(phone ? 0 : radius, phone ? 16 : 6, f)}px`;
+        fr.style.borderRadius = `${lerp(radius, 6, f)}px`;
         // Al posarse, el vídeo se funde con la ficha.
         const land = smooth(seg(p, 0.5, 0.58));
         head.style.opacity = String(1 - land);
@@ -150,10 +146,13 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
               ))}
             </span>
           </h2>
-          <div className="relative mt-2 flex-1 lg:px-[var(--gutter)]">
+          <div className="relative mt-6 flex-1 sm:mt-2 lg:px-[var(--gutter)]">
             <ProjectBrowser items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
           </div>
         </div>
+
+        {/* El título principal vive aquí (no dentro del vídeo, que se oculta al hacer scroll) */}
+        <h1 className="sr-only">2894_ Studio: {studio.headline}</h1>
 
         {/* Showreel */}
         <div className="pointer-events-none absolute inset-0 z-10 [&>header]:pointer-events-auto">

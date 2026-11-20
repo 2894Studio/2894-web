@@ -225,7 +225,7 @@ html.lenis, html.lenis body { height: auto; }
 
 /* Paso del cierre a la página del busto: la pantalla se funde a blanco mientras los puntos salen despedidos. */
 .fade-to-cloud {
-  animation: fade-to-cloud 0.7s ease-in forwards;
+  animation: fade-to-cloud 0.7s ease-out forwards;
 }
 @keyframes fade-to-cloud {
   from { opacity: 0; }

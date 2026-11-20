@@ -131,32 +131,32 @@ export function Footer() {
         </h2>
 
         {/* Lo importante primero: correo y teléfono, cada uno con su acción directa */}
-        <dl className="pointer-events-none relative z-10 mt-8 grid max-w-3xl gap-3 [&_a]:pointer-events-auto">
-          <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+        <ul className="pointer-events-none relative z-10 mt-8 grid max-w-3xl gap-3 [&_a]:pointer-events-auto">
+          <li data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
             <div>
-              <dt className="text-sm opacity-75">Correo</dt>
-              <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">{studio.email}</dd>
+              <p className="text-sm opacity-90">Correo</p>
+              <p className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">{studio.email}</p>
             </div>
             <a href={mailHref} onClick={() => track("contacto", { canal: "correo" })} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
               <MailIcon />
               Enviar correo
             </a>
-          </div>
-          <div data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+          </li>
+          <li data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
             <div>
-              <dt className="text-sm opacity-75">Teléfono</dt>
-              <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
+              <p className="text-sm opacity-90">Teléfono</p>
+              <p className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
                 <a href={`tel:${studio.phone.replace(/\s/g, "")}`} onClick={() => track("contacto", { canal: "telefono" })} className="inline-flex min-h-11 items-center underline decoration-1 underline-offset-[6px] hover:text-sky">
                   {studio.phone}
                 </a>
-              </dd>
+              </p>
             </div>
             <a href={whatsappHref} target="_blank" rel="noreferrer" onClick={() => track("contacto", { canal: "whatsapp" })} className="spring inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-cloud px-6 text-base font-medium text-cobalt hover:bg-ink hover:text-cloud focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud">
               <WhatsAppIcon />
               WhatsApp
             </a>
-          </div>
-        </dl>
+          </li>
+        </ul>
 
         <div data-mark aria-hidden className="pointer-events-none relative z-10 mt-auto select-none whitespace-nowrap pb-6 text-[clamp(4.5rem,25vw,24rem)] font-bold leading-none tracking-tighter">
           <Chars text="2894_" />
