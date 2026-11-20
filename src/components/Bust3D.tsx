@@ -721,6 +721,31 @@ function LiveBust({ night }: { night: boolean }) {
           </button>
         )}
 
+        {/* Botón de la cámara: arriba a la derecha, junto al modo noche. El texto sale al pasar el cursor o enfocar (y se queda
+            mientras se pide permiso o si se deniega); con la cámara activa, las instrucciones quedan abajo a la derecha. */}
+        <div className="group absolute right-[calc(var(--gutter)+3.5rem)] top-[calc(16px+env(safe-area-inset-top,0px))] z-30">
+          <button
+            type="button"
+            onClick={camOn ? stopCam : startCam}
+            disabled={cam === "asking"}
+            aria-pressed={camOn}
+            aria-describedby="cam-note"
+            aria-label={camOn ? "Apagar la cámara" : cam === "asking" ? "Activando la cámara…" : "Activar la cámara: mueve el busto con tu cabeza y las nubes con tu mano"}
+            className={`spring inline-flex size-12 items-center justify-center rounded-full border backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt disabled:opacity-60 ${pill}`}
+          >
+            <CameraIcon pulse={cam === "asking"} />
+          </button>
+          <p
+            id="cam-note"
+            role="tooltip"
+            className={`pointer-events-none absolute right-0 top-[calc(100%+0.5rem)] w-max max-w-[16rem] rounded-2xl border px-3 py-2 text-right text-xs backdrop-blur-md transition-opacity duration-300 ${night ? "border-white/15 bg-[#0d1220]/85 text-cloud/80" : "border-ink/10 bg-white/90 text-ink/70"} ${
+              camOn ? "hidden" : cam === "asking" || cam === "denied" ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+            }`}
+          >
+            {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Se sigue el movimiento de la cabeza y de la mano (y la apertura de pulgar e índice de la mano izquierda para el zoom), no las expresiones; la imagen se procesa en tu dispositivo y no se guarda."}
+          </p>
+        </div>
+
         {/* Cámara opcional */}
         <div className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-[var(--gutter)] z-20 flex flex-col items-end gap-2">
           {/* El espejo existe siempre (oculto) para poder colocar la imagen de la cámara en cuanto llega. */}
@@ -749,28 +774,12 @@ function LiveBust({ night }: { night: boolean }) {
               </button>
             </div>
           </div>
-          {camOn ? (
+          {camOn && (
             <p className={`max-w-[16rem] text-right text-xs ${note}`}>
               El busto repite el movimiento de tu cabeza.
               <br />
               Tu mano derecha abierta: arrastra las nubes con ella, y un barrido rápido de lado las lanza. Mano izquierda: abre y cierra pulgar e índice, como en un trackpad, para hacer zoom.
             </p>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={startCam}
-                disabled={cam === "asking"}
-                aria-label={cam === "asking" ? "Activando la cámara…" : "Activar la cámara: mueve el busto con tu cabeza y las nubes con tu mano"}
-                title={cam === "asking" ? "Activando la cámara…" : "Activar la cámara"}
-                className={`spring inline-flex size-12 items-center justify-center rounded-full border backdrop-blur-md disabled:opacity-60 ${pill}`}
-              >
-                <CameraIcon pulse={cam === "asking"} />
-              </button>
-              <p className={`max-w-[16rem] text-right text-xs ${note}`}>
-                {cam === "denied" ? "Sin acceso a la cámara: puedes girar el busto arrastrándolo." : "Opcional. Se sigue el movimiento de la cabeza y de la mano (y la apertura de pulgar e índice de la mano izquierda para el zoom), no las expresiones; la imagen se procesa en tu dispositivo y no se guarda."}
-              </p>
-            </>
           )}
         </div>
       </div>
