@@ -56,3 +56,82 @@ export async function startFaceTracking(onFace: (x: number, y: number) => void, 
     throw e;
   }
 }
+
+// ───────────────────────── Orientación 3D de la cabeza ─────────────────────────
+// Para que el busto repita el movimiento de la cabeza (no los gestos): MediaPipe Face Landmarker devuelve la matriz
+// de pose de la cara en el espacio de la cámara (derecha-izquierda X, arriba Y, hacia la cámara +Z; imagen sin espejo).
+// De ella se sacan los tres giros. No se piden las blendshapes (expresiones): solo el movimiento.
+const LANDMARKER_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+// Giros en radianes, imagen sin espejo. yaw: alrededor de Y (negativo = la persona gira hacia SU derecha);
+// pitch: alrededor de X (negativo = mira arriba); roll: alrededor de Z (positivo = inclina hacia SU hombro derecho).
+// `side`: -0,5..0,5, dónde cae la nariz entre las mejillas en la imagen (sirve para comprobar el signo del yaw).
+export type HeadPose = { yaw: number; pitch: number; roll: number; side: number };
+
+// Ángulos de Euler (orden YXZ: primero yaw, luego pitch, luego roll) de una matriz 4x4 en columnas, con la escala quitada.
+function eulerYXZ(d: number[]) {
+  const n0 = Math.hypot(d[0], d[1], d[2]) || 1, n1 = Math.hypot(d[4], d[5], d[6]) || 1, n2 = Math.hypot(d[8], d[9], d[10]) || 1;
+  const m11 = d[0] / n0, m21 = d[1] / n0, m31 = d[2] / n0, m22 = d[5] / n1;
+  const m13 = d[8] / n2, m23 = d[9] / n2, m33 = d[10] / n2;
+  const pitch = Math.asin(-Math.max(-1, Math.min(1, m23)));
+  if (Math.abs(m23) < 0.9999999) return { yaw: Math.atan2(m13, m33), pitch, roll: Math.atan2(m21, m22) };
+  return { yaw: Math.atan2(-m31, m11), pitch, roll: 0 };
+}
+
+export async function startHeadPose(onPose: (p: HeadPose) => void, onLost: () => void): Promise<FaceTracker> {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error("sin-camara");
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  const stopStream = () => stream.getTracks().forEach((t) => t.stop());
+  try {
+    const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
+    const fileset = await FilesetResolver.forVisionTasks(WASM);
+    const make = (delegate: "GPU" | "CPU") =>
+      FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: LANDMARKER_MODEL, delegate },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: true,
+      });
+    const landmarker = await make("GPU").catch(() => make("CPU")); // sin GPU disponible, en CPU
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    await video.play();
+
+    let raf = 0, stopped = false, last = -1, missed = 0;
+    const loop = () => {
+      if (stopped) return;
+      raf = requestAnimationFrame(loop);
+      if (video.currentTime === last || video.readyState < 2) return;
+      last = video.currentTime;
+      const res = landmarker.detectForVideo(video, performance.now());
+      const m = res.facialTransformationMatrixes?.[0]?.data;
+      const lm = res.faceLandmarks?.[0];
+      if (!m || m.length < 16 || !lm) {
+        if (++missed > 20) onLost();
+        return;
+      }
+      missed = 0;
+      // Mejilla 234 (derecha de la persona) y 454 (izquierda), punta de la nariz 1.
+      const w = lm[454].x - lm[234].x;
+      const side = w ? (lm[1].x - (lm[234].x + lm[454].x) / 2) / Math.abs(w) : 0;
+      onPose({ ...eulerYXZ(Array.from(m)), side });
+    };
+    raf = requestAnimationFrame(loop);
+    return {
+      video,
+      stop: () => {
+        stopped = true;
+        cancelAnimationFrame(raf);
+        landmarker.close();
+        stopStream();
+        video.remove();
+      },
+    };
+  } catch (e) {
+    stopStream();
+    throw e;
+  }
+}
