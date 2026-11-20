@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FINE_POINTER, gsap, REDUCED } from "@/lib/gsap";
 import type { SphereItem } from "@/lib/projects";
+import { Logo } from "@/components/Logo";
 import { VideoLightbox } from "@/components/VideoLightbox";
 import { track } from "@/lib/track";
 
@@ -16,8 +17,8 @@ const pointsFor = (n: number) =>
     return { y, r: Math.sqrt(1 - y * y), th: i * GOLDEN };
   });
 // Texto por defecto de la sección Proyectos mientras no se señala ningún proyecto.
+// El título "2894_" es el logo (con el guion parpadeando, igual que en la barra de navegación).
 const INTRO = {
-  title: "2894_",
   text: "Estudio creativo multidisciplinar. Ayudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
 };
 const BASE_SPEED = 0.0024; // rad por frame
@@ -398,7 +399,9 @@ export function ProjectSphere({
         {/* Sin proyecto señalado: texto por defecto, en el mismo sitio y formato que la reseña. */}
         {!shown && (
           <div key="intro" className="label-in">
-            <h3 className="text-[28px] font-bold uppercase tracking-tight">{INTRO.title}</h3>
+            <h3 className="text-[28px] font-bold uppercase tracking-tight">
+              <Logo />
+            </h3>
             <p className="mt-3 text-base">{INTRO.text}</p>
           </div>
         )}
