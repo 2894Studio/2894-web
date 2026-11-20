@@ -10,11 +10,29 @@ import type { SphereItem } from "@/lib/projects";
 // Cada proyecto es una diapositiva con su imagen o vídeo, el texto y los botones siempre visibles (sin hover).
 // Solo se anima (fotos que pasan / vídeo) la diapositiva que se está viendo.
 // `mediaRef`: expone la caja de imagen de cada diapositiva para que el showreel vuele hasta la primera.
-export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaRef?: MutableRefObject<(HTMLDivElement | null)[]> }) {
+// `fill`: ocupa todo el alto disponible de su contenedor (dentro de la apertura, que está fijada a la pantalla): si el texto
+// de un proyecto no cabe, el área de las diapositivas se desplaza hacia abajo, sin que nada quede tapado por la barra.
+export function ProjectSlider({ items, mediaRef, fill = false }: { items: SphereItem[]; mediaRef?: MutableRefObject<(HTMLDivElement | null)[]>; fill?: boolean }) {
   const scroller = useRef<HTMLUListElement>(null);
   const slides = useRef<(HTMLLIElement | null)[]>([]);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState<SphereItem | null>(null);
+  const [more, setMore] = useState(false); // hay texto por leer más abajo (solo con `fill`)
+
+  // ¿Queda texto escondido bajo el borde inferior? Se recalcula al desplazar, al cambiar de diapositiva y al redimensionar.
+  useEffect(() => {
+    const ul = scroller.current;
+    if (!ul || !fill) return;
+    const check = () => setMore(ul.scrollHeight - ul.scrollTop - ul.clientHeight > 12);
+    check();
+    ul.addEventListener("scroll", check, { passive: true });
+    const ro = new ResizeObserver(check);
+    ro.observe(ul);
+    return () => {
+      ul.removeEventListener("scroll", check);
+      ro.disconnect();
+    };
+  }, [fill, current]);
 
   // Diapositiva activa = la que ocupa más pantalla.
   useEffect(() => {
@@ -38,7 +56,7 @@ export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaR
   };
 
   return (
-    <div role="region" aria-roledescription="carrusel" aria-label="Proyectos" className="relative">
+    <div role="region" aria-roledescription="carrusel" aria-label="Proyectos" className={fill ? "absolute inset-0 flex flex-col" : "relative"}>
       <ul
         ref={scroller}
         tabIndex={0}
@@ -46,7 +64,8 @@ export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaR
           if (e.key === "ArrowRight") { e.preventDefault(); go(current + 1); }
           if (e.key === "ArrowLeft") { e.preventDefault(); go(current - 1); }
         }}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-[10vw] pb-4 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cobalt [&::-webkit-scrollbar]:hidden"
+        data-lenis-prevent
+        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto px-[10vw] pb-4 [scrollbar-width:none] ${fill ? "min-h-0 flex-1 overflow-y-auto" : ""} focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cobalt [&::-webkit-scrollbar]:hidden`}
       >
         {items.map((p, i) => {
           const link = p.links[0];
@@ -60,14 +79,14 @@ export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaR
             >
               <div
                 ref={(n) => { if (mediaRef) mediaRef.current[i] = n; }}
-                className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-ink/5"
+                className={`relative overflow-hidden rounded-2xl bg-ink/5 ${fill ? "aspect-video" : "aspect-[16/10]"}`}
               >
                 <CardMedia item={p} index={i} active={i === current} />
               </div>
               <div className="px-1 pt-3">
                 {p.category && <p className="text-sm text-ink/80">{p.category}</p>}
                 <h3 className="mt-1 text-xl font-light uppercase leading-tight tracking-tight">{p.title}</h3>
-                {p.review && <p className="mt-2 line-clamp-2 text-base leading-snug">{p.review}</p>}
+                {p.review && <p className="mt-2 text-base leading-snug">{p.review}</p>}
                 {(link || p.clickVideo) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {p.clickVideo && (
@@ -88,8 +107,14 @@ export function ProjectSlider({ items, mediaRef }: { items: SphereItem[]; mediaR
         })}
       </ul>
 
+      {fill && (
+        <div aria-hidden className={`pointer-events-none -mt-10 mb-2 flex h-8 shrink-0 justify-center transition-opacity duration-300 ${more ? "opacity-100" : "opacity-0"}`}>
+          <span className="rounded-full bg-ink px-4 py-1.5 text-sm text-cloud">Sigue leyendo ↓</span>
+        </div>
+      )}
+
       {/* Contador y flechas (zonas táctiles de 44 px) */}
-      <div className="mt-1 flex items-center justify-between px-[10vw]">
+      <div className={`mt-1 flex shrink-0 items-center justify-between px-[10vw] ${fill ? "mb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]" : ""}`}>
         <p aria-live="polite" className="text-sm tabular-nums text-ink/70">
           {current + 1} / {items.length}
         </p>

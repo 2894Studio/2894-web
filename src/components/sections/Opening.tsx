@@ -146,7 +146,7 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
               ))}
             </span>
           </h2>
-          <div className="relative mt-6 flex-1 sm:mt-2 lg:px-[var(--gutter)]">
+          <div className="relative mt-6 min-h-0 flex-1 sm:mt-2 lg:px-[var(--gutter)]">
             <ProjectBrowser items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
           </div>
         </div>

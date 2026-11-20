@@ -19,6 +19,6 @@ export function ProjectBrowser({
   sizeClass?: string;
 }) {
   const phone = useIsPhone();
-  if (phone) return <ProjectSlider items={items} mediaRef={cardsRef} />;
+  if (phone) return <ProjectSlider items={items} mediaRef={cardsRef} fill={controlled} />;
   return <ProjectSphere items={items} controlled={controlled} cardsRef={cardsRef} sizeClass={sizeClass} />;
 }
