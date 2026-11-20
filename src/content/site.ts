@@ -46,17 +46,17 @@ export const nav = [
 export const services = [
   {
     key: "Discover",
-    text: "Research, trend analysis y benchmark para decidir qué diseñar, y cómo trabajar mejor.",
+    text: "Research, trend analysis y asesoría para descubrir cómo hacer de la IA un diferenciador estratégico de tu equipo de diseño.",
     items: ["Trend analysis", "Problem Framing", "Foresight", "IA Maturity Assessment"],
   },
   {
     key: "Apply",
-    text: "Vibe coding y diseño con IA: de la idea a un entorno de prototipos en el que tu equipo puede probar y desplegar, con acompañamiento.",
+    text: "Vibe coding, diseño y content con IA: de la idea a contenido o a prototipos en un entorno de prototipado en el que tu equipo puede probar y desplegar más rápido.",
     items: ["Diseño con IA", "Rapid prototyping", "Design System con IA", "IA Content"],
   },
   {
     key: "Grow",
-    text: "Equipos que crecen con la IA: formación, acompañamiento y marco estratégico para sostenerlo.",
+    text: "Equipos que crecen con la IA: desarrollo de proyectos, formación y acompañamiento.",
     items: ["Formación en IA", "Workshops", "AI Roadmap", "Políticas de IA", "Consultoría"],
   },
 ];
