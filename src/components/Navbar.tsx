@@ -153,15 +153,18 @@ export function Navbar() {
           {/* Controles del showreel: visibles mientras se ve el vídeo; tras el primer scroll se pliegan y la barra
               se queda solo con la navegación (la transformación se ve: el hueco se cierra con suavidad). */}
           <div
-            aria-hidden={!player}
-            inert={!player}
-            className={`flex shrink-0 items-center gap-1 overflow-hidden transition-[max-width,opacity,margin] duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${player ? "max-w-32 opacity-100" : "pointer-events-none -ml-2 max-w-0 opacity-0"}`}
+            aria-hidden={!player && reelState.muted}
+            inert={!player && reelState.muted}
+            className={`flex shrink-0 items-center gap-1 overflow-hidden transition-[max-width,opacity,margin] duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${player ? "max-w-32 opacity-100" : !reelState.muted && !reducedMotion ? "max-w-12 opacity-100" : "pointer-events-none -ml-2 max-w-0 opacity-0"}`}
           >
+            {/* Si el sonido está activo, el botón de silencio se queda en la barra aunque se haga scroll. */}
             <button
               type="button"
               onClick={reel.toggle}
+              tabIndex={player ? 0 : -1}
+              aria-hidden={!player}
               aria-label={reelState.playing ? "Pausar showreel" : "Reproducir showreel"}
-              className="spring flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-cloud hover:bg-cobalt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt"
+              className={`spring ${player ? "flex" : "hidden"} size-11 shrink-0 items-center justify-center rounded-full bg-ink text-cloud hover:bg-cobalt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt`}
             >
               <PlayIcon playing={reelState.playing} />
             </button>

@@ -22,12 +22,12 @@ const smoothE = (t: number) => t * t * (3 - 2 * t);
 // Contenido de una tarjeta: la portada y, con la esfera a la vista, el pase de todas las fotos del proyecto
 // (~0,4 s cada una, como un GIF); en proyectos de vídeo, el vídeo sin sonido.
 const FRAME_MS = 420; // cada foto ~0,4 s
-const SIZES = "(max-width: 640px) 60vw, 34vw"; // portada (también al abrir la tarjeta en grande)
+const SIZES = "(max-width: 640px) 82vw, 34vw"; // portada (también al abrir la tarjeta en grande)
 const FRAME_SIZES = "320px"; // fotos del pase: ligeras, se precargan al aparecer la esfera
 // Los vídeos empiezan un poco después del inicio (muchos arrancan en blanco o en negro) y vuelven ahí al terminar.
 export const VIDEO_START = 4;
 export const VIDEO_RATE = 2; // los vídeos de proyectos se reproducen a doble velocidad
-function CardMedia({ item, active, index = 0 }: { item: Project; active: boolean; index?: number }) {
+export function CardMedia({ item, active, index = 0 }: { item: Project; active: boolean; index?: number }) {
   const [tick, setTick] = useState(index); // cada ficha empieza en una foto distinta: no cambian todas a la vez
   const video = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(Boolean(item.video)); // el vídeo aún no tiene datos para reproducirse

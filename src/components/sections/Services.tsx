@@ -192,7 +192,7 @@ export function Services({ images }: { images: ApplyImage[] }) {
             aria-expanded={panelOpen}
             aria-controls="sky-panel"
             onClick={() => setPanelOpen((o) => !o)}
-            className="spring ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-sm font-medium backdrop-blur-lg max-sm:min-h-9"
+            className="spring ml-auto flex min-h-11 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-sm font-medium backdrop-blur-lg"
           >
             {panelOpen ? "Ocultar controles" : "Ajustar el cielo"}
           </button>

@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CloudSky } from "@/components/CloudSky";
-import { ProjectSphere } from "@/components/ProjectSphere";
+import { ProjectBrowser } from "@/components/ProjectBrowser";
 import { Hero } from "@/components/sections/Hero";
 import { Projects } from "@/components/sections/Projects";
-import { setReel } from "@/lib/reel";
+import { getReel, reel as reelCtl, setReel } from "@/lib/reel";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { SphereItem } from "@/lib/projects";
 
@@ -46,7 +46,7 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
   useEffect(() => {
     const st = stage.current, tr = track.current;
     if (!st || !tr) return;
-    let raf = 0, inView = true;
+    let raf = 0, inView = true, muteCalled = false;
     const io = new IntersectionObserver(([e]) => (inView = e.isIntersecting));
     io.observe(tr);
     const header = () => st.querySelector<HTMLElement>("[data-reel-header]");
@@ -60,6 +60,14 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
       const W = st.clientWidth, H = st.clientHeight;
       const head = header(), fr = frameEl();
       setReel({ active: p < 0.03 }); // play/pausa en la barra solo al principio
+      // El sonido se apaga (con fundido) al dejar de ver el showreel: así nunca queda sonando sin control a la vista.
+      if (p > 0.16) {
+        if (!muteCalled && !getReel().muted) {
+          muteCalled = true;
+          reelCtl.mute();
+        }
+      } else muteCalled = false;
+      const phone = window.innerWidth < 640;
 
       // 1 · Se enmarca: aparece el cielo alrededor del vídeo.
       const a = smooth(seg(p, 0, 0.12));
@@ -68,16 +76,20 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
 
       if (head && fr) {
         // 2 · El vídeo vuela hasta la ficha del primer proyecto (la sigue aunque la esfera gire).
-        const f = easeInOut(seg(p, 0.14, 0.5));
+        const f = easeInOut(seg(p, phone ? 0.06 : 0.14, 0.5));
         const card = cards.current[0];
         const sr = st.getBoundingClientRect();
         const cr = card?.getBoundingClientRect();
         const tx = cr ? cr.left - sr.left : W / 2, ty = cr ? cr.top - sr.top : H / 2;
         const tw = cr ? cr.width : 0, th = cr ? cr.height : 0;
-        const x = lerp(inset, tx, f), y = lerp(inset, ty, f);
-        const w = lerp(W - 2 * inset, tw, f), h = lerp(H - 2 * inset, th, f);
+        // Escritorio: el vídeo empieza a pantalla completa. Móvil: empieza en horizontal (16:9, ancho completo, sin recortar
+        // la imagen) sobre el cielo y se encoge hasta la primera ficha del carrusel.
+        const sx = phone ? 0 : inset, sy = phone ? (H - (W * 9) / 16) / 2 - H * 0.04 : inset;
+        const sw = phone ? W : W - 2 * inset, sh = phone ? (W * 9) / 16 : H - 2 * inset;
+        const x = lerp(sx, tx, f), y = lerp(sy, ty, f);
+        const w = lerp(sw, tw, f), h = lerp(sh, th, f);
         Object.assign(head.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto", padding: "0" });
-        fr.style.borderRadius = `${lerp(radius, 6, f)}px`;
+        fr.style.borderRadius = `${lerp(phone ? 0 : radius, phone ? 16 : 6, f)}px`;
         // Al posarse, el vídeo se funde con la ficha.
         const land = smooth(seg(p, 0.5, 0.58));
         head.style.opacity = String(1 - land);
@@ -139,7 +151,7 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
             </span>
           </h2>
           <div className="relative mt-2 flex-1 lg:px-[var(--gutter)]">
-            <ProjectSphere items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
+            <ProjectBrowser items={items} controlled cardsRef={cards} sizeClass="w-[min(92vw,66svh)]" />
           </div>
         </div>
 

@@ -71,11 +71,37 @@ export function Hero({ managed = false }: { managed?: boolean }) {
           if (v.paused) v.play().catch(() => {});
         }
       },
+      mute: () => {
+        const v = video.current;
+        if (!v || v.muted) return;
+        // Fundido corto del sonido (350 ms) y después silencio; el volumen se restaura para la próxima vez.
+        const t0 = performance.now();
+        const step = (now: number) => {
+          const k = Math.min(1, (now - t0) / 350);
+          v.volume = 1 - k;
+          if (k < 1) requestAnimationFrame(step);
+          else {
+            v.muted = true;
+            v.volume = 1;
+          }
+        };
+        requestAnimationFrame(step);
+      },
       seek: (t) => {
         if (video.current) video.current.currentTime = t;
       },
     });
   });
+
+  // El sonido nunca sigue sonando con la pestaña en segundo plano o la pantalla apagada.
+  useEffect(() => {
+    const onHide = () => {
+      const v = video.current;
+      if (document.hidden && v && !v.muted) v.muted = true;
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, []);
 
   // Play/pausa y sonido en la barra solo arriba del todo: tras el primer scroll se pliegan (vuelven al subir).
   useEffect(() => {

@@ -116,7 +116,7 @@ export function Footer() {
           data-bust
           onClick={openBust}
           aria-label="Abrir el busto de 2894_"
-          className="absolute inset-y-0 right-0 block max-w-full cursor-pointer opacity-40 transition-opacity duration-500 hover:opacity-90 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:right-[var(--gutter)] md:max-w-[48vw] md:opacity-70"
+          className="absolute inset-y-0 right-0 block max-w-full cursor-pointer opacity-[0.16] transition-opacity duration-500 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cloud md:right-[var(--gutter)] md:max-w-[48vw] md:opacity-[0.34] md:hover:opacity-80"
           style={{ aspectRatio: BUST_ASPECT }}
         >
           <HalftoneBust className="h-full w-full" burstRef={burst} />
@@ -146,7 +146,7 @@ export function Footer() {
             <div>
               <dt className="text-sm opacity-75">Teléfono</dt>
               <dd className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
-                <a href={`tel:${studio.phone.replace(/\s/g, "")}`} onClick={() => track("contacto", { canal: "telefono" })} className="underline decoration-1 underline-offset-[6px] hover:text-sky">
+                <a href={`tel:${studio.phone.replace(/\s/g, "")}`} onClick={() => track("contacto", { canal: "telefono" })} className="inline-flex min-h-11 items-center underline decoration-1 underline-offset-[6px] hover:text-sky">
                   {studio.phone}
                 </a>
               </dd>
