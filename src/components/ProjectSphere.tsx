@@ -22,7 +22,7 @@ const INTRO = {
   text: "Estudio creativo multidisciplinar.\nAyudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
 };
 const BASE_SPEED = 0.0024; // rad por frame
-const HOVER_ZOOM = 0.32; // la tarjeta bajo el cursor crece un 32 % (zoom suave)
+const HOVER_ZOOM = 0.6; // la tarjeta bajo el cursor crece un 60 %
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothE = (t: number) => t * t * (3 - 2 * t);
 
