@@ -22,6 +22,7 @@ const INTRO = {
   text: "Estudio creativo multidisciplinar.\nAyudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
 };
 const BASE_SPEED = 0.0024; // rad por frame
+const HOVER_ZOOM = 0.32; // la tarjeta bajo el cursor crece un 32 % (zoom suave)
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothE = (t: number) => t * t * (3 - 2 * t);
 
@@ -200,12 +201,13 @@ export function ProjectSphere({
         const bigH = window.innerHeight * (window.innerWidth < 640 ? 0.3 : 0.56);
         const bigS = Math.min(bigH / h, (window.innerWidth * (window.innerWidth < 640 ? 0.86 : 0.46)) / w) / f;
         const tx = lerpN(x * s.R * k, offX / f, e), ty = lerpN(-p.y * s.R * k, offY / f, e), tz = lerpN(z * s.R * k, zO, e);
-        const sc = lerpN(Math.min(1, k * 1.15) * (0.62 + depth * 0.38), bigS, e);
-        c.style.transform = `translate3d(${tx}px, ${ty}px, ${tz}px) scale(${sc})`;
         hl[i] += ((i === hoverRef.current && pin < 0 ? 1 : 0) - hl[i]) * 0.15;
+        // Zoom al pasar el cursor: la tarjeta señalada crece en su sitio (el abierto con clic va al centro, más grande).
+        const sc = lerpN(Math.min(1, k * 1.15) * (0.62 + depth * 0.38), bigS, e) * (1 + HOVER_ZOOM * smoothE(Math.max(0, Math.min(1, hl[i]))));
+        c.style.transform = `translate3d(${tx}px, ${ty}px, ${tz}px) scale(${sc})`;
         const base = lerpN(Math.max(0, Math.min(1, k)) * (0.25 + depth * 0.75), 1, hl[i]);
         c.style.opacity = String(i === pin ? lerpN(base, 1, e) : lerpN(base, base * 0.12, dim));
-        c.style.zIndex = String(e > 0.02 ? 500 : Math.round(depth * 100));
+        c.style.zIndex = String(e > 0.02 ? 500 : Math.round(depth * 100) + (hl[i] > 0.02 ? 200 : 0)); // la señalada, por delante de las demás
         // Todas las tarjetas se pueden señalar, estén delante o detrás (salvo con un proyecto abierto o al aparecer).
         c.style.pointerEvents = i === pin || (k > 0.8 && pin < 0) ? "auto" : "none";
         zs[i] = z;
@@ -224,6 +226,12 @@ export function ProjectSphere({
               hit = i;
             }
           });
+        // Con la tarjeta ya ampliada bajo el cursor, se mantiene aunque se solape con otra (evita parpadeos en el borde).
+        const cur = hoverRef.current;
+        if (ptr.in && pin < 0 && cur >= 0 && cur !== hit && cards.current[cur]) {
+          const r = cards.current[cur]!.getBoundingClientRect();
+          if (ptr.x >= r.left && ptr.x <= r.right && ptr.y >= r.top && ptr.y <= r.bottom) hit = cur;
+        }
         if (hit !== hoverRef.current) {
           hoverRef.current = hit;
           setHovered(hit >= 0 ? projects[hit] : null);

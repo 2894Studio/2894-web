@@ -692,6 +692,7 @@ function LiveBust({ night }: { night: boolean }) {
           tabIndex={ready ? 0 : -1}
           role="group"
           aria-label="Busto 3D de 2894_. Arrastra o usa las flechas del teclado para girarlo; doble clic o la tecla Inicio lo devuelven al frente."
+          data-grab={camOn ? undefined : ""}
           className={`absolute inset-0 select-none outline-none transition-opacity duration-700 focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cobalt ${night ? "[filter:drop-shadow(0_0_44px_rgb(125_183_255/0.22))]" : "[filter:drop-shadow(0_18px_36px_rgb(11_11_13/0.12))]"} ${ready ? "opacity-100" : "pointer-events-none opacity-0"} ${camOn ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
         />
 

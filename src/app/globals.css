@@ -203,6 +203,8 @@ html.lenis, html.lenis body { height: auto; }
 @media (hover: hover) and (pointer: fine) {
   html, html * { cursor: var(--cursor-arrow) !important; }
   a, a *, button, button *, summary, summary *, [role="button"], label[for], select { cursor: var(--cursor-hand) !important; }
+  /* Busto 3D de /busto (arrastrable): la mano indica que se puede manipular. */
+  [data-grab], [data-grab] * { cursor: var(--cursor-hand) !important; }
 }
 
 /* Barra de progreso del showreel en la barra inferior. */
