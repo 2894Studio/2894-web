@@ -243,3 +243,11 @@ html.lenis, html.lenis body { height: auto; }
 @media (prefers-reduced-motion: reduce) {
   .bust-page-in, .fade-to-cloud { animation: none; }
 }
+
+/* Apertura en vertical: el vídeo se ve entero (16:9) y el estudio se presenta encima y debajo. */
+.reel-intro { display: none; }
+@media (max-aspect-ratio: 87/100) {
+  .reel-intro { display: flex; }
+  /* Hasta que la escena coloca el vídeo en su hueco, no se enseña a pantalla completa (evita el salto al cargar). */
+  [data-reel-stage]:not([data-ready]) [data-reel-header] { visibility: hidden; }
+}
