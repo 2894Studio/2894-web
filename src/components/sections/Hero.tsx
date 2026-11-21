@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useReducedMotion } from "@/lib/useReducedMotion";
-import { registerReel, setReel } from "@/lib/reel";
+import { getReel, registerReel, setReel } from "@/lib/reel";
 import { reel, studio } from "@/content/site";
+
+type FullscreenVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
 
 // Hero = showreel a pantalla completa, servido desde la propia web en calidad adaptativa (HLS: 1080p/720p/480p,
 // cada visitante recibe la mejor que permite su conexión). Con el scroll se enmarca con bordes redondeados.
@@ -59,6 +61,53 @@ export function Hero({ managed = false }: { managed?: boolean }) {
     if (v.paused) v.play().catch(() => {});
     else v.pause();
   };
+  // En móvil (vertical), un toque en el vídeo lo abre a pantalla completa con sonido y controles del sistema
+  // (en iPhone, el reproductor nativo; en Android, pantalla completa girada a horizontal). Al cerrarlo, todo vuelve a como estaba.
+  const restore = useRef<{ muted: boolean } | null>(null);
+  useEffect(() => {
+    const v = video.current as FullscreenVideo | null;
+    if (!v) return;
+    const onExit = () => {
+      if (!restore.current) return;
+      if (document.fullscreenElement) return; // sigue en pantalla completa
+      v.controls = false;
+      v.muted = restore.current.muted;
+      restore.current = null;
+      try {
+        (screen.orientation as ScreenOrientation & { unlock?: () => void }).unlock?.();
+      } catch {}
+    };
+    document.addEventListener("fullscreenchange", onExit);
+    v.addEventListener("webkitendfullscreen", onExit);
+    return () => {
+      document.removeEventListener("fullscreenchange", onExit);
+      v.removeEventListener("webkitendfullscreen", onExit);
+    };
+  }, []);
+  const openFullscreen = () => {
+    const v = video.current as FullscreenVideo | null;
+    if (!v) return;
+    restore.current = { muted: v.muted };
+    v.muted = false;
+    v.volume = 1;
+    v.controls = true;
+    v.play().catch(() => {});
+    if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); // iPhone: solo existe el reproductor nativo
+    else if (v.requestFullscreen)
+      v.requestFullscreen({ navigationUI: "hide" })
+        .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape").catch(() => {}))
+        .catch(() => {
+          v.controls = false;
+          v.muted = restore.current?.muted ?? true;
+          restore.current = null;
+        });
+  };
+  const onTap = () => {
+    const mobile = window.matchMedia("(max-width: 640px) and (max-aspect-ratio: 87/100)").matches;
+    if (mobile && getReel().active) openFullscreen();
+    else togglePlay();
+  };
+
   useEffect(() => {
     registerReel({
       toggle: togglePlay,
@@ -150,7 +199,7 @@ export function Hero({ managed = false }: { managed?: boolean }) {
         </div>
         <div className="absolute inset-0 bg-ink/15" />
         {/* Sin botones sobre el vídeo: un clic en él pausa/reproduce (los controles accesibles están en la barra). */}
-        {!reduced && <div aria-hidden onClick={togglePlay} className="absolute inset-0 z-[1]" />}
+        {!reduced && <div aria-hidden onClick={onTap} className="absolute inset-0 z-[1]" />}
         {!managed && <h1 className="sr-only">2894_ Studio: {studio.headline}</h1>}
       </div>
     </header>
