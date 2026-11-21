@@ -53,9 +53,9 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
     io.observe(tr);
     const header = () => st.querySelector<HTMLElement>("[data-reel-header]");
     const frameEl = () => st.querySelector<HTMLElement>("[data-reel-frame]");
-    // En vertical (móvil, tableta en vertical) el vídeo horizontal no se recorta: se ve entero, centrado, con el estudio
+    // Solo en móvil en vertical el vídeo horizontal no se recorta: se ve entero, centrado, con el estudio
     // presentado encima y debajo. Su hueco es el elemento [data-reel-slot]; desde él arranca el vuelo hacia la ficha.
-    const vertical = window.matchMedia("(max-aspect-ratio: 87/100)");
+    const vertical = window.matchMedia("(max-width: 640px) and (max-aspect-ratio: 87/100)");
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
