@@ -170,7 +170,7 @@ export function Footer() {
 
         {/* Lo importante primero: correo y teléfono, cada uno con su acción directa */}
         <ul className="pointer-events-none relative z-10 mt-8 grid max-w-3xl gap-3 [&_a]:pointer-events-auto">
-          <li data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+          <li data-reveal className="flex flex-col items-start gap-y-3 border-t border-current/25 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6">
             <div>
               <p className="text-sm opacity-90">Correo</p>
               <p className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">{studio.email}</p>
@@ -180,7 +180,7 @@ export function Footer() {
               Enviar correo
             </a>
           </li>
-          <li data-reveal className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-current/25 pt-4">
+          <li data-reveal className="flex flex-col items-start gap-y-3 border-t border-current/25 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6">
             <div>
               <p className="text-sm opacity-90">Teléfono</p>
               <p className="text-[clamp(1.25rem,2.6vw,1.75rem)] font-medium">
