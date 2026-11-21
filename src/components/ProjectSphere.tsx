@@ -19,7 +19,7 @@ const pointsFor = (n: number) =>
 // Texto por defecto de la sección Proyectos mientras no se señala ningún proyecto.
 // El título "2894_" es el logo (con el guion parpadeando, igual que en la barra de navegación).
 const INTRO = {
-  text: "Estudio creativo multidisciplinar. Ayudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
+  text: "Estudio creativo multidisciplinar.\nAyudamos a empresas y equipos de diseño a descubrir, construir y crecer con IA mediante research, prototipado, formación, consultoría y creación de contenido.",
 };
 const BASE_SPEED = 0.0024; // rad por frame
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -402,7 +402,7 @@ export function ProjectSphere({
             <h3 className="text-[28px] font-bold uppercase tracking-tight">
               <Logo />
             </h3>
-            <p className="mt-3 text-base">{INTRO.text}</p>
+            <p className="mt-3 whitespace-pre-line text-base">{INTRO.text}</p>
           </div>
         )}
         {shown && (
