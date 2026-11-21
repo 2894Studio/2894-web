@@ -74,7 +74,9 @@ export function Services({ images }: { images: ApplyImage[] }) {
   const goTo = (i: number) => {
     const st = pinST.current;
     if (!st) return;
-    const y = st.start + ((st.end - st.start) * i) / LAST;
+    // El recorrido ocupa el principio del tramo fijado (el final es la parada en Grow): se mide igual que en el efecto.
+    const mv = Math.max(1, (track.current ? track.current.scrollWidth - window.innerWidth : 0) * 1.3);
+    const y = st.start + (mv * i) / LAST;
     const lenis = getLenis();
     if (lenis) lenis.scrollTo(y, { duration: 1.2 });
     else window.scrollTo(0, y);
@@ -91,6 +93,10 @@ export function Services({ images }: { images: ApplyImage[] }) {
   useEffect(() => {
     if (reduced || !section.current || !track.current) return;
     const dist = () => (track.current ? track.current.scrollWidth - window.innerWidth : 0);
+    // Recorrido horizontal (Discover → Grow) y parada corta con Grow ya fijo antes de pasar al cierre.
+    const move = () => Math.max(1, dist() * 1.3);
+    const hold = () => window.innerHeight * 0.6;
+    const stretch = () => (move() + hold()) / move(); // el recorrido ocupa el principio del tramo fijado; el resto es la parada
     const paint = (p: number) => {
       const x = p * LAST;
       const i = Math.min(LAST - 1, Math.floor(x));
@@ -115,17 +121,17 @@ export function Services({ images }: { images: ApplyImage[] }) {
     const ctx = gsap.context(() => {
       const tween = gsap.to(track.current, {
         x: () => -dist(),
-        ease: "none",
+        ease: (t: number) => Math.min(1, t * stretch()),
         // Las nubes viven dentro del recorrido (grupo aislado sin el cielo): así el texto de Grow, en modo
         // diferencia, solo se invierte donde hay nube. Se contrarrestan para que parezcan fijas.
         onUpdate() {
           if (cloudLayer.current) cloudLayer.current.style.transform = `translate3d(${-Number(gsap.getProperty(track.current, "x"))}px,0,0)`;
-          paint(this.progress());
+          paint(Math.min(1, this.progress() * stretch()));
         },
         scrollTrigger: {
           trigger: section.current,
           start: "top top",
-          end: () => `+=${dist() * 1.3}`,
+          end: () => `+=${move() + hold()}`,
           pin: true,
           scrub: 0.8,
           invalidateOnRefresh: true,

@@ -150,7 +150,7 @@
   --radius: 1rem;
 
   --gutter: clamp(1rem, 4vw, 3rem);
-  --section-y: clamp(5rem, 12vw, 10rem);
+  --section-y: clamp(7rem, 19vw, 16rem);
 }
 
 @theme inline {

@@ -44,7 +44,7 @@ export function Clients({ media = { frames: {}, logos: {} } }: { media?: ClientM
     <section id="clients" className="py-[var(--section-y)]" aria-labelledby="clients-h">
       <SectionTitle id="clients-h" text="Clientes" />
 
-      <ul ref={list} className="mx-[var(--gutter)] mt-12 border-b border-ink" onPointerLeave={() => setHover(null)}>
+      <ul ref={list} className="mx-[var(--gutter)] mt-[clamp(3rem,7vw,6rem)] border-b border-ink" onPointerLeave={() => setHover(null)}>
         {clients.map((c, i) => (
           <li key={c.name} onPointerEnter={() => setHover(i)} className="group border-t border-ink">
             <div className="grid w-full grid-cols-1 items-center gap-x-6 gap-y-2 py-6 sm:grid-cols-[2fr_3fr] sm:py-8">

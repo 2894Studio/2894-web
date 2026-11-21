@@ -535,11 +535,35 @@ function LiveBust({ night }: { night: boolean }) {
         api.current = { reset, setNight, setZoom };
         setNight(nightRef.current); // por si la persona cambió de modo mientras cargaba el modelo
 
+        // La mano (cursor de la marca) solo aparece con el puntero sobre el propio busto: se lanza un rayo desde el puntero
+        // contra el modelo (como mucho cada 60 ms) y se marca `data-grab` en el contenedor.
+        const ray = new THREE.Raycaster();
+        const ndc = new THREE.Vector2();
+        let overBust = false, probedAt = 0;
+        const setOver = (v: boolean) => {
+          if (v === overBust) return;
+          overBust = v;
+          if (v) box.setAttribute("data-grab", "");
+          else box.removeAttribute("data-grab");
+        };
+        const probe = (e: PointerEvent, force = false) => {
+          if (head.current.active || e.pointerType !== "mouse") return setOver(false); // con la cámara activa manda la cabeza
+          const now = performance.now();
+          if (!force && now - probedAt < 60) return;
+          probedAt = now;
+          const r = canvas.getBoundingClientRect();
+          if (!r.width || !r.height) return setOver(false);
+          ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+          ray.setFromCamera(ndc, camera);
+          setOver(ray.intersectObject(pivot, true).length > 0);
+        };
+
         const onDown = (e: PointerEvent) => {
           if (head.current.active || (e.pointerType === "mouse" && e.button !== 0)) return;
           if (mode === "follow") syncFromPivot();
           mode = "free";
           dragging = true;
+          setOver(true); // arrastrando se mantiene la mano
           vYaw = vPitch = 0;
           lastX = e.clientX;
           lastY = e.clientY;
@@ -565,6 +589,7 @@ function LiveBust({ night }: { night: boolean }) {
             const r = box.getBoundingClientRect();
             hover.x = clamp((e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2), -1, 1);
             hover.y = clamp((e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2), -1, 1);
+            probe(e);
           }
           kick();
         };
@@ -575,11 +600,13 @@ function LiveBust({ night }: { night: boolean }) {
           try {
             box.releasePointerCapture(e.pointerId);
           } catch {}
+          probe(e, true);
           kick();
         };
         const onLeave = () => {
           hover.x = 0;
           hover.y = 0;
+          setOver(false);
           kick();
         };
         const onKey = (e: KeyboardEvent) => {
@@ -629,6 +656,7 @@ function LiveBust({ night }: { night: boolean }) {
           window.removeEventListener("pointercancel", onUp);
           document.documentElement.removeEventListener("pointerleave", onLeave);
           api.current = null;
+          box.removeAttribute("data-grab");
           model.traverse((o: any) => {
             o.geometry?.dispose?.();
             for (const m of ([] as any[]).concat(o.material ?? [])) {
@@ -692,7 +720,6 @@ function LiveBust({ night }: { night: boolean }) {
           tabIndex={ready ? 0 : -1}
           role="group"
           aria-label="Busto 3D de 2894_. Arrastra o usa las flechas del teclado para girarlo; doble clic o la tecla Inicio lo devuelven al frente."
-          data-grab={camOn ? undefined : ""}
           className={`absolute inset-0 select-none outline-none transition-opacity duration-700 focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-cobalt ${night ? "[filter:drop-shadow(0_0_44px_rgb(125_183_255/0.22))]" : "[filter:drop-shadow(0_18px_36px_rgb(11_11_13/0.12))]"} ${ready ? "opacity-100" : "pointer-events-none opacity-0"} ${camOn ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
         />
 
