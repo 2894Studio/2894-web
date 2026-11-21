@@ -182,7 +182,7 @@ function ScrollOpening({ items }: { items: SphereItem[] }) {
             <p className="text-[clamp(4.5rem,24vw,8rem)] font-bold leading-none tracking-tighter">
               2894<span className="blink">_</span>
             </p>
-            <p className="mt-2 text-lg font-light">{studio.headline}</p>
+            <p className="mt-2 text-lg font-light">Estudio multidisciplinar de IA aplicada al Diseño</p>
           </div>
           <div data-reel-slot className="aspect-video w-full" />
           <p data-fade className="flex items-center gap-2 text-sm will-change-transform">
