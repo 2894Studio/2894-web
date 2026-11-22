@@ -60,12 +60,12 @@ export const services = [
 // Clientes: al pasar por encima, pase tipo GIF con las fotos de su carpeta en Drive (_Clientes) o, si no hay,
 // con las del proyecto indicado en `project` (slug de la carpeta del proyecto).
 export const clients = [
-  // Orden pedido por el estudio: Inditex, DPROMA, ING, Nateevo, General Electric, MOA.
+  // Orden pedido por el estudio: Inditex, DPROMA, ING, Nateevo, General Software, MOA.
   { name: "INDITEX", project: "storyboard-en-video-para-zara-home", logo: { src: "/brand/clients/inditex.svg", ratio: 320 / 65 }, disciplines: ["Creative AI Training"], image: stock[13].src, alt: stock[13].title },
   { name: "DPROMA", project: "dproma", logo: { src: "/brand/clients/dproma.svg", ratio: 2546.8 / 1354.7, scale: 1.6 }, disciplines: ["AI Augmented Product Design + AI Consulting & Training"], image: stock[14].src, alt: stock[14].title },
   { name: "ING", project: "formaciones", logo: { src: "/brand/clients/ing.svg", ratio: 264.6 / 89.4 }, disciplines: ["Creative AI / UX Training & Consulting"], image: stock[10].src, alt: stock[10].title },
   { name: "NATEEVO", project: "formaciones", logo: { src: "/brand/clients/nateevo.svg", ratio: 811 / 181 }, disciplines: ["Creative AI / UX Training & Consulting"], image: stock[12].src, alt: stock[12].title },
-  { name: "GENERAL ELECTRIC", project: "formaciones", logo: { src: "/brand/clients/ge.svg", ratio: 1, scale: 1.7 }, disciplines: ["Creative AI / UX Training & Consulting"], image: stock[12].src, alt: stock[12].title },
+  { name: "GENERAL SOFTWARE", project: "formaciones", logo: undefined as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Creative AI / UX Training & Consulting"], image: stock[12].src, alt: stock[12].title },
   { name: "MOA", project: "taller-personajes-consistentes" as string | undefined, logo: { src: "/brand/clients/moa.png", ratio: 437 / 129 } as { src: string; ratio: number; scale?: number } | undefined, disciplines: ["Creative AI Training"], image: stock[11].src, alt: stock[11].title },
 ];
 
